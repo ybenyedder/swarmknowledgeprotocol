@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Cleartext is REQUIRED: OSP peering runs plain HTTP on the LAN, and the
+     integrity layer is the protocol's own HMAC signature (Ed25519 + TLS
+     transport is the production path). Without it Android 9+ blocks
+     HttpHub entirely ("Cleartext HTTP traffic not permitted"). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -15,7 +19,8 @@
     <application
         android:allowBackup="false"
         android:label="OSP Bridge"
-        android:theme="@android:style/Theme.Material.Light.DarkActionBar">
+        android:theme="@android:style/Theme.Material.Light.DarkActionBar"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"

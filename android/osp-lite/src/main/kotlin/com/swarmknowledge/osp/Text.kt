@@ -64,6 +64,23 @@ fun similarity(a: ByteArray, b: ByteArray): Double {
     return if (union == 0) 0.0 else inter.toDouble() / union.toDouble()
 }
 
+/**
+ * Asymmetric query-side coverage: |q ∩ c| / |q| (Python `query_cover`, same
+ * shape as the LexicalVerifier's answer-vs-evidence ratio). The symmetric
+ * Jaccard collapses when chunk ≫ query in token count — a full match on an
+ * 8-token question against a 120-token chunk scores ~0.03, under any sane
+ * bidMin. Competence is how much of the QUESTION a chunk can ground.
+ */
+fun queryCover(qv: ByteArray, cv: ByteArray): Double {
+    var qBits = 0
+    for (b in qv) qBits += Integer.bitCount(b.toInt() and 0xFF)
+    if (qBits == 0) return 0.0
+    var hit = 0
+    val n = minOf(qv.size, cv.size)
+    for (i in 0 until n) hit += Integer.bitCount(qv[i].toInt() and cv[i].toInt() and 0xFF)
+    return hit.toDouble() / qBits.toDouble()
+}
+
 fun chunkHash(text: String): String =
     "sha256:" + SHA256.get().digest(text.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }.take(16)

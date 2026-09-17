@@ -19,7 +19,7 @@ import urllib.request
 import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from osp_core import Packet, Action, DevSigner  # noqa: E402
+from osp_core import Packet, Action, DevSigner, embed  # noqa: E402
 
 
 def call(base, token, method, path, body=None):
@@ -91,7 +91,7 @@ def main():
         pkt = Packet(
             action=Action(args.action), origin_id=args.origin, query_id=os.urandom(6).hex(),
             sender=args.origin, gas=3,
-            payload={'query_vec': [0] * 256, 'query_text': args.query},
+            payload={'query_vec': list(embed(args.query)), 'query_text': args.query},
         ).seal(signer)
         wire = {**pkt.signed_object(), 'sig': pkt.sig}
         s, p = call(args.url, args.token, 'POST', '/osp/packet', wire)

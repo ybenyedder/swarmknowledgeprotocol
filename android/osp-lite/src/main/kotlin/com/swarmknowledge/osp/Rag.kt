@@ -36,7 +36,7 @@ class RagStore(chunks: List<String> = emptyList()) {
     fun add(text: String): Chunk = Chunk(chunkHash(text), text, embed(text)).also { entries.add(it) }
 
     fun retrieve(qv: ByteArray, topK: Int = 3): List<Scored> =
-        entries.map { Scored(similarity(qv, it.vec), it) }
+        entries.map { Scored(queryCover(qv, it.vec), it) }
             .filter { it.score > 0.0 }
             .sortedByDescending { it.score }          // stable, like the Python sort
             .take(topK)

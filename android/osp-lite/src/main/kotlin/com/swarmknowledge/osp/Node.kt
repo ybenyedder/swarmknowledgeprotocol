@@ -334,7 +334,8 @@ class Node(
             // REQ-F-03: capability-aware routing — generation-capable classes
             // (N2/N3) are proposed first; N1 relays fill remaining slots.
             val sorted = recs.sortedBy { it.klass == "N1" }
-            return sorted.take(k).map { it.nodeId }
+            if (sorted.isNotEmpty()) return sorted.take(k).map { it.nodeId }
+            // empty directory: fall back to the transport's own peers
         }
         return hub?.peers(id)?.take(k) ?: emptyList()
     }

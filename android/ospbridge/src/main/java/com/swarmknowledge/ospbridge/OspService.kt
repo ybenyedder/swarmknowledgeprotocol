@@ -66,14 +66,27 @@ class OspService : Service() {
     private val advertised = ArrayList<String>()
     private var originHub: HttpHub? = null
 
-    /** Configured remote peers (nodeId → base URL), persisted in prefs. */
-    val remotes: Map<String, String>
+    /** A configured remote peer: endpoint + optional link secret. */
+    data class Peer(val url: String, val token: String? = null)
+
+    /**
+     * Remote peer table (nodeId → Peer), persisted in prefs. Accepts both the
+     * compact form {"id": "http://…"} and {"id": {"url": "…", "token": "…"}}.
+     */
+    val remotes: Map<String, Peer>
         get() {
             @Suppress("UNCHECKED_CAST")
             val raw = prefs.getString("osp_peers", null)
                 ?.let { MiniJson.parse(it) as? Map<String, Any?> }
                 ?: return emptyMap()
-            return raw.entries.associate { it.key.toString() to it.value.toString() }
+            return raw.entries.associate { (id, v) ->
+                when (v) {
+                    is Map<*, *> -> id.toString().let {
+                        it to Peer(v["url"].toString(), v["token"]?.toString())
+                    }
+                    else -> id.toString() to Peer(v.toString())
+                }
+            }
         }
 
     val token: String
@@ -138,14 +151,28 @@ class OspService : Service() {
 
     /** (Re)build the origin's transport from the persisted peer table. */
     fun rebuildOriginHub() {
-        val h = HttpHub(remotes)
+        // read timeout must cover the REMOTE generation (ALIGN/RESOLVE round
+        // trips against an LLM can take tens of seconds)
+        val h = HttpHub(
+            remotes.mapValues { (_, p) -> HttpHub.Remote(p.url, p.token) },
+            connectTimeoutMs = 5_000,
+            readTimeoutMs = 300_000,
+        )
+        h.onError = { msg, err ->
+            android.util.Log.w(TAG, msg, err)
+        }
         origin?.attach(h, LexicalVerifier())
         originHub = h
     }
 
-    /** Update the remote peer table (nodeId → base URL) and persist it. */
-    fun setPeers(peers: Map<String, String>) {
-        prefs.edit().putString("osp_peers", MiniJson.write(peers)).apply()
+    /** Update the remote peer table and persist it. */
+    fun setPeers(peers: Map<String, Peer>) {
+        prefs.edit().putString(
+            "osp_peers",
+            MiniJson.write(peers.mapValues { (_, p) ->
+                if (p.token == null) p.url else mapOf("url" to p.url, "token" to p.token)
+            }),
+        ).apply()
         rebuildOriginHub()
     }
 
@@ -254,6 +281,7 @@ class OspService : Service() {
     }
 
     companion object {
+        private const val TAG = "OspService"
         const val CHANNEL_ID = "osp-bridge"
         const val NOTIFICATION_ID = 1
         const val PORT_DEFAULT = 8090

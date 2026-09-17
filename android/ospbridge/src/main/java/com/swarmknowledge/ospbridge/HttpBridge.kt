@@ -2,9 +2,7 @@ package com.swarmknowledge.ospbridge
 
 import com.swarmknowledge.osp.MiniJson
 import com.swarmknowledge.osp.Packet
-import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
@@ -22,7 +20,7 @@ import java.util.concurrent.Executors
  *   GET  /v1/models            OpenAI-compatible model list
  *   POST /v1/chat/completions  OpenAI-compatible RAW passthrough to LLMProvider
  *                              (NOT OSP-verified — the caller owns grounding)
- *   POST /osp/query            {text, tier} → verified OSP negotiation outcome
+ *   POST /osp/query            {query, tier} → verified OSP negotiation outcome
  *   POST /osp/packet           sealed OSP packet → responder's reply packet
  *   POST /osp/teach            {text} → add a knowledge chunk
  *   GET  /osp/peers            current remote peer table
@@ -67,20 +65,34 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
         try {
             sock.use { s ->
                 s.soTimeout = 180_000
-                val reader = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
-                val requestLine = reader.readLine() ?: return
-                val parts = requestLine.split(" ")
+                // Request line, headers AND body are read as RAW BYTES off one
+                // stream: Content-Length counts bytes, so a char-decoding reader
+                // would block forever on multi-byte UTF-8 bodies (é = 2 bytes,
+                // 1 char) — non-ASCII queries hung exactly there until timeout.
+                val ins = s.getInputStream()
+                val headBytes = ArrayList<Byte>(512)
+                while (true) {
+                    val b = ins.read()
+                    if (b < 0) return
+                    headBytes.add(b.toByte())
+                    val z = headBytes.size
+                    if (z >= 4 && headBytes[z - 1] == LF && headBytes[z - 2] == CR &&
+                        headBytes[z - 3] == LF && headBytes[z - 4] == CR
+                    ) break
+                }
+                val head = String(headBytes.toByteArray(), Charsets.US_ASCII)
+                val eol = head.indexOf("\r\n")
+                if (eol < 0) return
+                val parts = head.substring(0, eol).split(" ")
                 if (parts.size < 2) return
                 val method = parts[0]
                 val path = parts[1].substringBefore('?')
                 val headers = HashMap<String, String>()
-                while (true) {
-                    val line = reader.readLine() ?: break
-                    if (line.isEmpty()) break
+                for (line in head.substring(eol + 2).split("\r\n")) {
                     val i = line.indexOf(':')
                     if (i > 0) headers[line.substring(0, i).trim().lowercase()] = line.substring(i + 1).trim()
                 }
-                val body = headers["content-length"]?.toIntOrNull()?.let { n -> readBody(reader, n) } ?: ""
+                val body = headers["content-length"]?.toIntOrNull()?.let { n -> readBody(ins, n) } ?: ""
 
                 val authorized = headers["authorization"] == "Bearer ${service.token}"
                 if (!authorized && path != "/osp/status") {
@@ -96,7 +108,11 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
                     method == "POST" && path == "/osp/query" -> ospQuery(body)
                     method == "POST" && path == "/osp/packet" -> ospPacket(body)
                     method == "POST" && path == "/osp/teach" -> teach(body)
-                    method == "GET" && path == "/osp/peers" -> service.remotes
+                    method == "GET" && path == "/osp/peers" ->
+                        service.remotes.mapValues { (_, p) ->
+                            if (p.token == null) p.url
+                            else mapOf("url" to p.url, "token" to p.token)
+                        }
                     method == "POST" && path == "/osp/peers" -> setPeers(body)
                     else -> null
                 }
@@ -115,15 +131,16 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
         }
     }
 
-    private fun readBody(reader: BufferedReader, n: Int): String {
-        val buf = CharArray(n)
+    /** Body decoded ONCE at the end — counts octets, not decoded characters. */
+    private fun readBody(ins: InputStream, n: Int): String {
+        val buf = ByteArray(n)
         var read = 0
         while (read < n) {
-            val r = reader.read(buf, read, n - read)
+            val r = ins.read(buf, read, n - read)
             if (r < 0) break
             read += r
         }
-        return buf.concatToString(0, read)
+        return String(buf, 0, read, Charsets.UTF_8)
     }
 
     // -- routes -----------------------------------------------------------------
@@ -160,7 +177,10 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
     /** The verified path: full local negotiation, firewall applied (REQ-F-02). */
     private fun ospQuery(body: String): Map<String, Any?> {
         val req = MiniJson.parse(body) as Map<*, *>
-        val text = req["text"]?.toString() ?: throw IllegalArgumentException("text required")
+        // "query" is the contract used by osp_cli.py and osp-js; "text" kept as
+        // the original bridge spelling
+        val text = (req["query"] ?: req["text"])?.toString()
+            ?: throw IllegalArgumentException("query (string) required")
         val tier = (req["tier"] as? Number)?.toInt() ?: 1
         val out = service.submitQueryLocal(text, tier)
             ?: throw IllegalStateException("service not ready")
@@ -176,15 +196,24 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
         return reply?.toWire() ?: emptyMap<String, Any?>()
     }
 
-    /** Peer table update: {"peers": {"node-id": "http://host:port"}} */
+    /**
+     * Peer table update: {"peers": {"node-id": "http://host:port"}} or
+     * {"peers": {"node-id": {"url": "http://host:port", "token": "…"}}}.
+     */
     private fun setPeers(body: String): Map<String, Any?> {
         val req = MiniJson.parse(body) as? Map<*, *> ?: throw IllegalArgumentException("body must be an object")
         @Suppress("UNCHECKED_CAST")
-        val peers = (req["peers"] as? Map<String, Any?>)
-            ?.entries?.associate { it.key.toString() to it.value.toString() }
+        val raw = req["peers"] as? Map<String, Any?>
             ?: throw IllegalArgumentException("peers object required")
+        val peers = raw.entries.associate { (id, v) ->
+            when (v) {
+                is Map<*, *> -> id to OspService.Peer(
+                    v["url"].toString(), v["token"]?.toString())
+                else -> id to OspService.Peer(v.toString())
+            }
+        }
         service.setPeers(peers)
-        return mapOf("ok" to true, "peers" to service.remotes)
+        return mapOf("ok" to true, "peers" to service.remotes.keys.toList())
     }
 
     private fun teach(body: String): Map<String, Any?> {
@@ -233,5 +262,7 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
 
     companion object {
         private const val TAG = "HttpBridge"
+        private const val CR: Byte = 13
+        private const val LF: Byte = 10
     }
 }

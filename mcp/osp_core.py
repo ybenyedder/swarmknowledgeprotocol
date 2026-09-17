@@ -69,6 +69,23 @@ def similarity(a: bytes, b: bytes) -> float:
     return inter / union if union else 0.0
 
 
+def query_cover(qv: bytes, cv: bytes) -> float:
+    """Asymmetric query-side coverage: |q ∩ c| / |q| (same shape as the
+    LexicalVerifier's answer-vs-evidence ratio).
+
+    The symmetric Jaccard collapses when chunk ≫ query in token count — a
+    full match on an 8-token question against a 120-token chunk scores ~0.03,
+    under any sane bidMin. Competence is measured as how much of the QUESTION
+    the chunk can ground, not how much of the chunk the question repeats.
+    Production keeps the interface and swaps in the cosine (v0.5 [A8])."""
+    qb = int.from_bytes(qv, "big")
+    qbits = bin(qb).count("1")
+    if not qbits:
+        return 0.0
+    cb = int.from_bytes(cv, "big")
+    return bin(qb & cb).count("1") / qbits
+
+
 def chunk_hash(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode()).hexdigest()[:16]
 
@@ -196,7 +213,7 @@ class RagStore:
 
     def retrieve(self, qv: bytes, top_k: int = 3) -> list[dict]:
         scored = sorted(
-            ((similarity(qv, c["vec"]), c) for c in self.chunks),
+            ((query_cover(qv, c["vec"]), c) for c in self.chunks),
             key=lambda p: p[0], reverse=True,
         )[:top_k]
         return [dict(c, score=round(s, 3)) for s, c in scored if s > 0]

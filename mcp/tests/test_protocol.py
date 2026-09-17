@@ -277,5 +277,40 @@ class TestDiscovery(unittest.TestCase):
         self.assertEqual(self.dir.stats.replays, 1)
 
 
+# ---------------------------------------------------------------------------
+# Dev-embedder retrieval metric (query_cover, REQ-F-02 firewall input)
+# ---------------------------------------------------------------------------
+
+class TestQueryCover(unittest.TestCase):
+    """Asymmetric query-side coverage — the retrieval competence metric.
+
+    Cross-language golden values (JS `queryCover`, Kotlin `queryCover` must
+    return exactly these): the symmetric Jaccard collapses when chunk ≫ query,
+    so a perfectly grounded 3-token question scores 0.286 under Jaccard but
+    1.0 under query-side coverage.
+    """
+
+    GOLDEN = [
+        # (query, chunk, cover, jaccard) — jaccard shown to document the gap
+        ("x y", "x z w v u", 0.5, 0.167),
+        ("bionics", "quantum pancake", 0.0, 0.0),
+        ("robot exosquelette", "<le robot humanoïde et l'exosquelette tactile>", 1.0, 0.286),
+        ("résumé document reçu", "résumé du document reçu hier", 1.0, 0.6),
+    ]
+
+    def test_query_cover_golden_values(self):
+        for q, c, cover, _jac in self.GOLDEN:
+            self.assertEqual(osp_core.query_cover(osp_core.embed(q), osp_core.embed(c)), cover)
+
+    def test_retrieve_ranks_by_query_cover(self):
+        rag = RagStore(["<le robot humanoïde et l'exosquelette tactile>", "quantum pancake"])
+        hits = rag.retrieve(osp_core.embed("robot exosquelette"))
+        self.assertTrue(hits and hits[0]["score"] == 1.0)
+        self.assertEqual(hits[0]["hash"], osp_core.chunk_hash(self.GOLDEN[2][1]))
+
+    def test_empty_query_vector_scores_zero(self):
+        self.assertEqual(osp_core.query_cover(bytes(32), osp_core.embed("anything")), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -97,4 +97,31 @@ class InteropTest {
         )
         for (s in samples) assertEquals(s, MiniJson.pyDouble(s.toDouble()), "for input $s")
     }
+
+    @Test
+    fun queryCoverMatchesPythonGoldenValues() {
+        // Same goldens as test_protocol.py / core.test.mjs: the symmetric
+        // Jaccard collapses when chunk ≫ query (the third case scores 0.286
+        // under Jaccard despite a perfect grounding), so retrieval competence
+        // is query-side coverage, not Jaccard.
+        val goldens = listOf(
+            Triple("x y", "x z w v u", 0.5),
+            Triple("bionics", "quantum pancake", 0.0),
+            Triple("robot exosquelette", "<le robot humanoïde et l'exosquelette tactile>", 1.0),
+            Triple("résumé document reçu", "résumé du document reçu hier", 1.0),
+        )
+        for ((q, c, cover) in goldens) {
+            assertEquals(cover, queryCover(embed(q), embed(c)), 1e-12)
+        }
+    }
+
+    @Test
+    fun ragRetrieveRanksByQueryCover() {
+        val chunk = "<le robot humanoïde et l'exosquelette tactile>"
+        val rag = RagStore(listOf(chunk, "quantum pancake"))
+        val hits = rag.retrieve(embed("robot exosquelette"))
+        assertTrue(hits.isNotEmpty())
+        assertEquals(1.0, hits[0].score, 1e-12)
+        assertEquals(chunkHash(chunk), hits[0].chunk.hash)
+    }
 }
