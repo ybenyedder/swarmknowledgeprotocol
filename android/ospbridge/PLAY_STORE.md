@@ -4,7 +4,7 @@
 Tree4Five OSP Bridge (by tree4five)
 
 ## Short Description
-Join the swarm: share verified knowledge between your devices, no cloud. (73/80 chars)
+Join the swarm: share verified knowledge between your devices, no cloud. (72/80 chars)
 
 ## Full Description
 Tree4Five OSP Bridge turns your phone or tablet into a node of the
