@@ -30,6 +30,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var learnBox: TextInputEditText
     private lateinit var queryBox: TextInputEditText
     private lateinit var out: TextView
+    private lateinit var peerUrl: TextInputEditText
+    private lateinit var peerToken: TextInputEditText
+
+    /** one-shot: peer card fields refilled from the persisted peer table */
+    private var peerFieldsRestored = false
 
     /** Field-tested examples: the "new mail" scenario against the bot peer. */
     private val examples = listOf(
@@ -41,8 +46,17 @@ class MainActivity : AppCompatActivity() {
 
     private val poll = object : Runnable {
         override fun run() {
-            status.text = OspService.instance?.statusSummary()
-                ?: getString(R.string.btn_start)
+            val svc = OspService.instance
+            status.text = svc?.statusSummary() ?: getString(R.string.btn_start)
+            // Restore the peer card once the service is up: url stays readable,
+            // the link secret goes back into the masked field so ADD PEER works
+            // without retyping anything after an app restart.
+            if (!peerFieldsRestored && svc != null && svc.remotes.isNotEmpty()) {
+                val first = svc.remotes.entries.first()
+                if (peerUrl.text.isNullOrBlank()) peerUrl.setText(first.value.url)
+                if (peerToken.text.isNullOrBlank()) first.value.token?.let { peerToken.setText(it) }
+                peerFieldsRestored = true
+            }
             handler.postDelayed(this, 1000)
         }
     }
@@ -97,8 +111,8 @@ class MainActivity : AppCompatActivity() {
         // Peering straight from the UI: resolve the remote's node id from its
         // status endpoint, then merge it (url + link secret) into the persisted
         // peer table — no adb needed on a store install.
-        val peerUrl = findViewById<TextInputEditText>(R.id.peerUrl)
-        val peerToken = findViewById<TextInputEditText>(R.id.peerToken)
+        peerUrl = findViewById(R.id.peerUrl)
+        peerToken = findViewById(R.id.peerToken)
         findViewById<MaterialButton>(R.id.btnAddPeer).setOnClickListener {
             val svc = OspService.instance ?: return@setOnClickListener
             val url = peerUrl.text.toString().trim().removeSuffix("/")
@@ -123,7 +137,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 handler.post {
                     out.text = result
-                    peerToken.setText("")
+                    // keep url + token in the fields: they are persisted in the
+                    // peer table and the secret only ever renders masked
+                    // (textPassword), so a restart resumes with no retyping
                 }
             }.start()
         }
