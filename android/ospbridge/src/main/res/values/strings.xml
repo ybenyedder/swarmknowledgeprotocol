@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tree4Five OSP Bridge</string>
+    <string name="card_status">Node status</string>
+    <string name="card_query">Ask the swarm</string>
+    <string name="card_teach">Teach a chunk</string>
+    <string name="query_hint">Ask a question — the swarm answers only with verified evidence</string>
+    <string name="teach_hint">Paste a knowledge chunk to store on this device</string>
+    <string name="btn_start">Start node</string>
+    <string name="btn_stop">Stop</string>
+    <string name="btn_query">Run verified query (T0)</string>
+    <string name="btn_teach">Teach chunk</string>
+</resources>

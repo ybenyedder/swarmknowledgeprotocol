@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tree4Five brand palette — identical to LLMProvider (com.tree4five.gguf). -->
+<resources>
+    <color name="colorPrimary">#0f0c29</color>
+    <color name="colorPrimaryVariant">#24243e</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorSecondary">#00f2fe</color>
+    <color name="colorSecondaryVariant">#4facfe</color>
+    <color name="colorOnSecondary">#000000</color>
+    <color name="colorBackground">#0f0c29</color>
+    <color name="colorSurface">#24243e</color>
+    <color name="colorOnBackground">#FFFFFF</color>
+    <color name="colorOnSurface">#FFFFFF</color>
+</resources>

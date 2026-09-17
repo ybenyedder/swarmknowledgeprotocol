@@ -1,38 +1,46 @@
 package com.swarmknowledge.ospbridge
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.textfield.TextInputEditText
 
 /**
- * Status + smoke-test surface for the bridge: starts/stops the service, shows
- * engine binding and budget, lets you teach a chunk and run one verified query
- * — enough to validate a device install without adb.
+ * Status + smoke-test surface for the bridge, in the Tree4Five look and feel
+ * (same dark Material theme as the LLMProvider engine): starts/stops the node,
+ * shows engine binding and budget, teaches a chunk and runs one verified query.
+ * Example chips preload the queries field-tested against the remote
+ * whatsapp-bot peer (new-mail verification, see android/README.md).
  */
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var status: TextView
-    private lateinit var learnBox: EditText
-    private lateinit var queryBox: EditText
+    private lateinit var learnBox: TextInputEditText
+    private lateinit var queryBox: TextInputEditText
     private lateinit var out: TextView
+
+    /** Field-tested examples: the "new mail" scenario against the bot peer. */
+    private val examples = listOf(
+        "résume le document justificatif de ressources",
+        "quelle est la date de l'engagement financier",
+        "résume le magazine de robotique reçu",
+        "que montre la vidéo reçue aujourd'hui",
+    )
 
     private val poll = object : Runnable {
         override fun run() {
             status.text = OspService.instance?.statusSummary()
-                ?: "Service stopped — press Start"
+                ?: getString(R.string.btn_start)
             handler.postDelayed(this, 1000)
         }
     }
@@ -44,55 +52,45 @@ class MainActivity : Activity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-        title = "OSP Bridge"
+        setContentView(R.layout.activity_main)
 
-        fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+        status = findViewById(R.id.status)
+        learnBox = findViewById(R.id.learnBox)
+        queryBox = findViewById(R.id.queryBox)
+        out = findViewById(R.id.out)
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
-        fun button(label: String, action: () -> Unit): Button =
-            Button(this).apply { text = label; setOnClickListener { action() } }
+        OspService.instance?.let { out.text = "token: ${it.token}" }
 
-        fun field(hint: String): EditText = EditText(this).apply {
-            this.hint = hint
-            setTextAppearance(android.R.style.TextAppearance_Small)
-        }
-
-        status = TextView(this).apply { textSize = 14f; setPadding(0, dp(8), 0, dp(8)) }
-        learnBox = field("teach: paste a knowledge chunk…")
-        queryBox = field("query: ask the swarm…")
-        out = TextView(this).apply {
-            textSize = 13f
-            setPadding(0, dp(8), 0, dp(8))
-            val svc = OspService.instance
-            text = svc?.let { "token: ${it.token}" } ?: ""
-        }
-
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-
-        row.addView(button("Start", {
+        findViewById<MaterialButton>(R.id.btnStart).setOnClickListener {
             val i = Intent(this, OspService::class.java)
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
-        }), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(button("Stop", { stopService(Intent(this, OspService::class.java)) }),
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        findViewById<MaterialButton>(R.id.btnStop).setOnClickListener {
+            stopService(Intent(this, OspService::class.java))
+        }
 
-        root.addView(status)
-        root.addView(row)
-        root.addView(learnBox)
-        root.addView(button("Teach chunk", {
-            val svc = OspService.instance ?: return@button
+        val chips = findViewById<ChipGroup>(R.id.chipGroup)
+        for (example in examples) {
+            val chip = Chip(this).apply {
+                text = example
+                isCheckable = false
+                setOnClickListener { queryBox.setText(example) }
+            }
+            chips.addView(chip)
+        }
+
+        findViewById<MaterialButton>(R.id.btnTeach).setOnClickListener {
+            val svc = OspService.instance ?: return@setOnClickListener
             val text = learnBox.text.toString()
             Thread {
                 val ok = svc.teach(text)
-                handler.post { out.text = if (ok) "taught · ${svc.rag.entries.size} chunks" else "empty chunk" }
+                handler.post {
+                    out.text = if (ok) "taught · ${svc.rag.entries.size} chunks" else "empty chunk"
+                }
             }.start()
-        }))
-        root.addView(queryBox)
-        root.addView(button("Run verified query (T0)", {
-            val svc = OspService.instance ?: return@button
+        }
+        findViewById<MaterialButton>(R.id.btnQuery).setOnClickListener {
+            val svc = OspService.instance ?: return@setOnClickListener
             val text = queryBox.text.toString()
             Thread {
                 val result = try {
@@ -104,10 +102,7 @@ class MainActivity : Activity() {
                 }
                 handler.post { out.text = result }
             }.start()
-        }))
-        root.addView(out)
-
-        setContentView(ScrollView(this).apply { addView(root) })
+        }
     }
 
     override fun onStart() {

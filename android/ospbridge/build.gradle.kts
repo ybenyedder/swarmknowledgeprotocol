@@ -8,17 +8,35 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.swarmknowledge.ospbridge"
+        // Play listing is under the Tree4Five brand, same family as the
+        // LLMProvider engine (com.tree4five.gguf) this app binds to.
+        applicationId = "com.tree4five.osp"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.6.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            // same convention as harnessDroid / LLMProvider: keystore lives one
+            // level up, passwords come from gradle properties (never committed)
+            storeFile = file("../release.keystore")
+            storePassword = project.findProperty("MYAPP_RELEASE_STORE_PASSWORD") as String? ?: "password123"
+            keyAlias = project.findProperty("MYAPP_RELEASE_KEY_ALIAS") as String? ?: "release"
+            keyPassword = project.findProperty("MYAPP_RELEASE_KEY_PASSWORD") as String? ?: "password123"
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     buildFeatures {
         aidl = true
-        // no compose / no XML layouts: the activity builds its UI in code,
-        // so no resource pipeline is needed beyond the manifest
     }
 
     compileOptions {
@@ -33,5 +51,8 @@ android {
 
 dependencies {
     implementation(project(":osp-lite"))
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
