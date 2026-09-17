@@ -59,3 +59,62 @@ Everyone (no user-generated content shared online)
    rollout.
 5. **Content rating** — Everyone; no ads; no in-app purchases.
 6. **Target SDK** 36, min SDK 26 (matches harnessDroid / LLMProvider).
+
+---
+
+## Console form answers (copy-paste)
+
+### Data safety (all "No" unless noted)
+
+| Console question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | **No** |
+| Is all of the user data collected by your app encrypted in transit? | n/a (nothing collected) |
+| Do you provide a way for users to request that their data is deleted? | n/a (nothing collected) |
+| Data collected / shared | **none** — no analytics, no ads, no telemetry, no device IDs |
+
+The app's whole point is that traffic goes device-to-device on the user's
+own network; see `store/PRIVACY_POLICY.md` (host it at a public URL and
+paste the link in App content → Privacy policy).
+
+### Content rating questionnaire
+
+- No objectionable content, no user-generated content shared between
+  users, no purchases, no ads, no location sharing → expect **Everyone**.
+
+### App content
+
+- **Ads**: no. **In-app purchases**: no.
+- **Permissions**: INTERNET, FOREGROUND_SERVICE, POST_NOTIFICATIONS —
+  declared usage: peering with the user's own devices.
+- **Privacy policy URL**: required (host PRIVACY_POLICY.md anywhere
+  public, e.g. GitHub Pages / a tree4five site page).
+
+### Release notes (v0.6.0)
+
+```
+First release. Join the swarm: turn this device into an Omni-Swarm
+Protocol node.
+• Verified answers only — every reply is checked against the evidence
+  your devices actually store; no evidence → honest abstention.
+• Peer directly with your other devices on your LAN (URL + link token,
+  no cloud, no account).
+• Works with LLM Provider (com.tree4five.gguf) for on-device generation.
+• Teach knowledge chunks to the local node.
+```
+
+### Upload assets (in `android/store/`)
+
+| Asset | File | Spec |
+|---|---|---|
+| App icon | `play_icon_512.png` | 512×512 PNG |
+| Feature graphic | `feature_graphic_1024x500.png` | 1024×500 PNG |
+| Phone screenshot 1 | `screenshot_node_status.png` | 1200×2000 PNG (node started, examples) |
+| Phone screenshot 2 | `screenshot_query_resolved.png` | 1200×2000 PNG (verified query → RESOLVED) |
+| Phone screenshot 3 | `screenshot_connect_peer.png` | 1200×2000 PNG (Connect a peer card) |
+
+Screenshots are the tablet's real session (bot peer on the LAN, magazine
+query → RESOLVED) — no personal documents, no secrets on screen (link
+tokens are truncated to 6 chars by the app). Regenerate graphics with
+`python3 android/store/make_assets.py`; regenerate the French user guide
+(6-page PDF, `user_guide_fr.pdf`) with `python3 android/store/make_guide.py`.

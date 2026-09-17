@@ -13,6 +13,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
+import com.swarmknowledge.osp.MiniJson
+import java.net.URL
 
 /**
  * Status + smoke-test surface for the bridge, in the Tree4Five look and feel
@@ -59,7 +61,9 @@ class MainActivity : AppCompatActivity() {
         queryBox = findViewById(R.id.queryBox)
         out = findViewById(R.id.out)
 
-        OspService.instance?.let { out.text = "token: ${it.token}" }
+        // Show a prefix only: the full link secret stays in app-private prefs
+        // (run-as / adb for peering), never on screen in a store build.
+        OspService.instance?.let { out.text = "token: ${it.token.take(6)}…" }
 
         findViewById<MaterialButton>(R.id.btnStart).setOnClickListener {
             val i = Intent(this, OspService::class.java)
@@ -86,6 +90,40 @@ class MainActivity : AppCompatActivity() {
                 val ok = svc.teach(text)
                 handler.post {
                     out.text = if (ok) "taught · ${svc.rag.entries.size} chunks" else "empty chunk"
+                }
+            }.start()
+        }
+
+        // Peering straight from the UI: resolve the remote's node id from its
+        // status endpoint, then merge it (url + link secret) into the persisted
+        // peer table — no adb needed on a store install.
+        val peerUrl = findViewById<TextInputEditText>(R.id.peerUrl)
+        val peerToken = findViewById<TextInputEditText>(R.id.peerToken)
+        findViewById<MaterialButton>(R.id.btnAddPeer).setOnClickListener {
+            val svc = OspService.instance ?: return@setOnClickListener
+            val url = peerUrl.text.toString().trim().removeSuffix("/")
+            if (!url.startsWith("http")) {
+                out.text = "peer URL must start with http"
+                return@setOnClickListener
+            }
+            // link secrets are whitespace-free; strip everything so a pasted
+            // token can't pick up stray spaces/newlines
+            val token = peerToken.text.toString().replace(Regex("\\s"), "")
+            Thread {
+                val result = try {
+                    val status = URL("$url/osp/status").openStream().use { ins ->
+                        MiniJson.parse(ins.readBytes().toString(Charsets.UTF_8)) as Map<*, *>
+                    }
+                    val nodeId = status["node_id"]?.toString()
+                        ?: url.substringAfter("//").replace('/', '_')
+                    svc.setPeers(svc.remotes + (nodeId to OspService.Peer(url, token.ifEmpty { null })))
+                    "peer added: $nodeId (${svc.remotes.size} peers)"
+                } catch (e: Exception) {
+                    "peer failed: ${e.message}"
+                }
+                handler.post {
+                    out.text = result
+                    peerToken.setText("")
                 }
             }.start()
         }

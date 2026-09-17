@@ -4,6 +4,10 @@
     <string name="card_status">Node status</string>
     <string name="card_query">Ask the swarm</string>
     <string name="card_teach">Teach a chunk</string>
+    <string name="card_peer">Connect a peer</string>
+    <string name="peer_url_hint">Peer URL (http://host:port)</string>
+    <string name="peer_token_hint">Peer token (leave empty if none)</string>
+    <string name="btn_add_peer">Add peer</string>
     <string name="query_hint">Ask a question — the swarm answers only with verified evidence</string>
     <string name="teach_hint">Paste a knowledge chunk to store on this device</string>
     <string name="btn_start">Start node</string>
