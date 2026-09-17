@@ -4,7 +4,7 @@
 Tree4Five OSP Bridge (by tree4five)
 
 ## Short Description
-Join the swarm: share verified knowledge between your devices, no cloud.
+Join the swarm: share verified knowledge between your devices, no cloud. (73/80 chars)
 
 ## Full Description
 Tree4Five OSP Bridge turns your phone or tablet into a node of the
@@ -12,22 +12,46 @@ Omni-Swarm Protocol — a peer-to-peer knowledge network for on-device AI.
 Your devices answer each other's questions using ONLY the knowledge they
 actually hold, and every answer is verified before it is shown.
 
-**Key Features:**
-* **Verified answers only:** each reply is checked against the evidence the
-  answering device really stores; no evidence → the node honestly abstains.
-* **No cloud:** negotiations run directly between your devices on your LAN.
-* **Works with LLM Provider:** binds the Tree4Five local AI engine
-  (com.tree4five.gguf) for on-device generation.
-* **Peer with anything:** sealed-packet wire format shared with the Python
-  MCP server and the whatsapp-bot JavaScript node.
-* **Privacy tiers:** sensitive (T2) traffic never leaves to remote providers.
-* **Forenseek menu:** one-tap diagnostics — LOG ALL exports a complete node
-  journal (link secrets truncated), VERSION shows app + protocol, RESET ALL
-  wipes identity, peers and taught knowledge.
-* **Tree4Five Material design:** same dark look and feel as the LLM Provider app.
+HOW IT WORKS
+• Start a node on each device — no account, no cloud, no server.
+• Peer them over your own network with a URL and a link token.
+• Ask a question: nodes negotiate, the best-evidenced node answers, and
+  the reply is checked against its cited evidence before it reaches you.
+• No evidence? The node says so — it abstains instead of guessing.
 
-Ask your swarm: "résume le document reçu" — it answers with grounded,
-verifiable content or says it does not know.
+KEY FEATURES
+• Verified answers only — every reply is checked against the evidence the
+  answering device really stores; no evidence → honest abstention.
+• No cloud — negotiations run directly between your devices on your
+  network; nothing is collected, nothing is shared.
+• Works with LLM Provider — binds the Tree4Five local AI engine
+  (com.tree4five.gguf) for on-device generation.
+• Peer with anything — sealed-packet wire format shared with the Python
+  MCP server and the whatsapp-bot JavaScript node.
+• Privacy tiers — sensitive (T2) traffic never goes to remote providers.
+• Honest failures — timeouts, out-of-gas, loops and ungrounded answers
+  end in explicit, inspectable outcomes, never a silent wrong answer.
+• Forenseek menu — one-tap diagnostics: LOG ALL exports a complete node
+  journal (link secrets truncated), VERSION shows app + protocol versions,
+  RESET ALL wipes identity, peers and taught knowledge.
+• Tree4Five Material design — same dark look and feel as the LLM Provider
+  app.
+
+Ask your swarm: "summarize the document I received" — it answers with
+grounded, verifiable content, or honestly says it does not know.
+
+WHO IS IT FOR
+• Tinkerers running small local AI models on phones, tablets and
+  single-board computers.
+• Privacy-minded users who want the knowledge of their documents to stay
+  on their own devices.
+• Developers of the Omni-Swarm Protocol — spec, reference code and
+  conformance tests at the project repository.
+
+HONEST POSTURE
+Early release (v0.6.0), developer-oriented: peering is manual (URL +
+token), packets are signed and TTL/gas-bounded, and a production
+Ed25519 + TLS signer is the committed next step.
 
 ## Tags
 AI, Knowledge Sharing, P2P, Privacy, Offline AI, Mesh, Tree4Five
