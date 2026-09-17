@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSP v0.6 "Connect" — Architecture &amp; Test Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { color-scheme: dark; --bg:#050505; --surface:#111; --border:#333; --text:#e0e0e0;
+                --muted:#888; --primary:#10b981; --glow:rgba(16,185,129,.2); --secondary:#6366f1; --warn:#fbbf24; }
+        body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text);
+               line-height:1.7; margin:0; padding:2rem; }
+        .container { max-width:1000px; margin:0 auto; }
+        header { border-bottom:1px solid var(--border); padding-bottom:2rem; margin-bottom:3rem; }
+        h1 { font-size:clamp(2.2rem,6vw,3rem); margin:0; background:linear-gradient(to right,var(--primary),var(--secondary));
+             -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        h2 { color:#fff; margin-top:3rem; border-left:4px solid var(--primary); padding-left:1rem; }
+        h3 { color:var(--primary); }
+        a { color:#818cf8; text-decoration:none; } a:hover { text-decoration:underline; }
+        code { color:#a78bfa; }
+        .table { width:100%; border-collapse:collapse; font-size:.88rem; margin-bottom:2rem; }
+        .table th,.table td { border:1px solid var(--border); padding:.55rem .8rem; text-align:left; vertical-align:top; }
+        .table th { background:var(--surface); color:#fff; }
+        .ok { color:var(--primary); font-weight:600; } .warn { color:var(--warn); font-weight:600; }
+        .code-block { background:#0a0a0a; border:1px solid var(--border); padding:1.5rem; border-radius:8px;
+                      font-family:'Courier New',monospace; font-size:.85rem; overflow-x:auto; color:#a78bfa;
+                      white-space:pre; margin-bottom:2rem; }
+        .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+                padding:1.5rem; box-shadow:0 10px 30px var(--glow); margin-bottom:1.5rem; }
+        footer { border-top:1px solid var(--border); margin-top:4rem; padding-top:1.5rem; color:var(--muted); font-size:.85rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>OSP v0.6 "Connect" — Architecture &amp; Test Plan</h1>
+        <p style="color:var(--muted);font-size:1.1rem;">
+            Remote LLM providers · Discovery services · MCP surface · How it is tested.
+            Requirements first: <a href="requirements_v06.html">requirements_v06.html</a>.
+        </p>
+    </header>
+
+    <section>
+        <h2>1. Architecture</h2>
+
+        <div class="code-block">
+ MCP clients (Claude Desktop · harnessdroid · any MCP host)
+        │  stdio · newline-delimited JSON-RPC 2.0
+        ▼
+┌───────────────────────────────────────────────────────────┐
+│  OspMcpServer (mcp_server.py)                             │
+│    initialize · tools/list · tools/call · ping            │
+│    tools: osp_query · osp_discover · osp_advertise        │
+│           osp_status · osp_explain                        │
+├───────────────────────────────────────────────────────────┤
+│  Node "mcp-origin" (osp_core.py) — class N1 (never        │
+│  generates)                                               │
+│    orchestrates: PROPOSE → BID → ALIGN → RESOLVE → VERIFY │
+│    enforces: gas · path-vector · jti · contraction ·      │
+│              quorum + provenance diversity · tiers        │
+├──────────────┬────────────────────────────┬───────────────┤
+│ Directory    │ D3 provider bindings       │ D2 verifier   │
+│ discovery.py │ providers.py (REQ-F-01)    │ interface     │
+│ leases · TOFU│ ├ EchoGrounded   (N2, dev) │ LexicalVerifier│
+│ top-k lookup │ ├ Confabulator   (advers.) │ (dev) → NLI   │
+│ (REQ-F-05)   │ ├ OpenAICompat   (N3, HTTP)│ cross-encoder │
+│              │ └ LLMProviderFileAdapter   │ later         │
+│              │    (../LLMprovider)        │               │
+├──────────────┴────────────────────────────┴───────────────┤
+│ InMemoryHub — transport seam (send/join/peers)            │
+│   real transports land here later: WhatsApp · mesh/BLE    │
+└───────────────────────────────────────────────────────────┘
+        </div>
+
+        <h3>Design decisions worth defending</h3>
+        <ul>
+            <li><strong>The origin node is N1 and never generates</strong> (v0.5 generation-once):
+            the MCP server negotiates, but the winning responder generates. A provider-backed node
+            only spends remote tokens when it wins an auction.</li>
+            <li><strong>Providers are downstream of the firewall, not part of it</strong> (REQ-F-02):
+            evidence chunks travel to the provider in a quoted envelope with an instruction to
+            answer only from evidence; the origin verifies the returned text against the cited
+            hashes. A lying provider produces REJECTED + reputation decay — proven by the
+            adversarial stub.</li>
+            <li><strong>Capability-aware routing</strong> (REQ-F-03): PROPOSE goes to N2/N3 nodes
+            first; N1 nodes fill remaining slots as relays and pre-bidders only.</li>
+            <li><strong>One transport seam</strong>: <code>InMemoryHub.send/join/peers</code> is the
+            entire transport interface today. WhatsApp (v0.5 hub mode) and BLE mesh implement the
+            same three functions later — no core changes.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>2. Sequence — a query over MCP</h2>
+        <div class="code-block">
+ host          server/origin        responder N3            provider (remote)
+  │ tools/call ─▶│                     │                       │
+  │              │─ DISCOVER ──▶ directory (lease lookup, top-k by centroid)
+  │              │─ PROPOSE(gas=3) ─▶ │                       │
+  │              │                    │ retrieval (D0) + gate │
+  │              │◀─ BID(bid, prov) ──│                       │
+  │              │  quorum q=2·T1, provenance diversity (C4)  │
+  │              │─ ALIGN ──────────▶ │ lock-in check (C3)    │
+  │              │◀─ ACK(distance) ───│                       │
+  │              │─ RESOLVE ────────▶ │─ envelope(query+chunks) ▶│
+  │              │                    │◀─ answer ────────────────│  (cost charged)
+  │              │◀─ RESOLVE(answer+prov hashes+chunks) ──────│
+  │              │ VERIFY: entailment vs cited hashes (L2)    │
+  │◀─ outcome ───│  RESOLVED / REJECTED + reputation update   │
+        </div>
+    </section>
+
+    <section>
+        <h2>3. Discovery design</h2>
+        <div class="card">
+            <h3>Lease-based directory, TOFU-pinned</h3>
+            <p>A record = {node_id, class, key bundle, endpoints, transports, topic codebook,
+            lease}. Registration pins the first signing key per node (TOFU); a different key is
+            rejected until an explicit <code>repin()</code>. Announcements carry a jti — replays
+            rejected. Leases (default 900 s) expire silently from lookup: a departed node
+            disappears rather than lying about availability. Bootstrap order: configured seeds →
+            mDNS (future, same interface) → directory. The class field (N1/N2/N3) is what makes
+            thin phones useful: they announce, relay, and pre-bid without ever paying for a
+            generation.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>4. Test Plan</h2>
+
+        <table class="table">
+            <tr><th>Layer</th><th>What</th><th>Status</th></tr>
+            <tr>
+                <td><strong>L0 — unit rules</strong></td>
+                <td>Packet validation in isolation: gas=0 → RFO, expired TTL → RFO,
+                self-in-trail → LOOP_DETECTED, replayed jti → silent drop.</td>
+                <td class="ok">implemented (6 tests)</td>
+            </tr>
+            <tr>
+                <td><strong>L1 — convergence modes</strong></td>
+                <td>The five modes as executable scenarios: RESOLVED (T1, 2 nodes),
+                NO_QUORUM (single bid at q=2), MISMATCH (evidence drift BID→ALIGN),
+                plus REJECTED via adversarial provider. Gas exhaustion bounded — no livelock.</td>
+                <td class="ok">implemented (5 tests)</td>
+            </tr>
+            <tr>
+                <td><strong>L2 — firewall &amp; tiers</strong></td>
+                <td>Confabulating provider rejected + reputation decay; provenance diversity
+                collapses echo votes; prompt-injection neutralized in the envelope.</td>
+                <td class="ok">implemented (3 tests)</td>
+            </tr>
+            <tr>
+                <td><strong>L3 — classes, budgets, providers</strong></td>
+                <td>N1 delegation to N3; budget exhaustion → abstention; provider swap
+                invariance (local vs scripted-remote); T2 never remote by default;
+                ../LLMprovider adapter degrades gracefully when absent.</td>
+                <td class="ok">implemented (5 tests)</td>
+            </tr>
+            <tr>
+                <td><strong>L4 — discovery &amp; MCP conformance</strong></td>
+                <td>Lease expiry, top-k ranking, TOFU pinning, discovery replay;
+                initialize → tools/list → tools/call in-process + real stdio smoke.</td>
+                <td class="ok">implemented (8 tests)</td>
+            </tr>
+            <tr>
+                <td><strong>L5 — property/fuzz</strong></td>
+                <td>Random topologies (seeded): invariant <em>every query ends ≤ G+C+R rounds in
+                an explicit mode</em>; random RAG/RFO-suppression chaos: origin wait stays bounded
+                (falls back to timeout).</td>
+                <td class="warn">planned — next iteration</td>
+            </tr>
+            <tr>
+                <td><strong>L6 — interop &amp; hardware</strong></td>
+                <td>Two server processes over a real transport; then the v0.5 §7 benchmark on
+                target phones. Numbers stay "modeled" until this layer runs.</td>
+                <td class="warn">planned — blocked on transports</td>
+            </tr>
+        </table>
+
+        <p>Current suite: <strong>24 tests, all green</strong>, ~0.05 s, zero network, zero
+        dependencies. Run: <code>cd mcp &amp;&amp; python3 -m unittest discover tests -v</code>
+        (docstrings name the requirement each test proves).</p>
+
+        <h3>Traceability matrix (requirements → tests)</h3>
+        <table class="table">
+            <tr><th>Requirement</th><th>Proving test(s)</th></tr>
+            <tr><td>REQ-F-01 provider binding</td><td>test_provider_swap_equality · test_llmprovider_adapter_reports_unavailable</td></tr>
+            <tr><td>REQ-F-02 untrusted providers</td><td>test_confabulating_provider_rejected</td></tr>
+            <tr><td>REQ-F-03 node classes</td><td>test_thin_node_delegates</td></tr>
+            <tr><td>REQ-F-04 cost accounting</td><td>test_budget_exhausted_abstains</td></tr>
+            <tr><td>REQ-F-05 discovery</td><td>test_lease_expiry · test_topk_lookup_ranks_by_codebook</td></tr>
+            <tr><td>REQ-F-06 MCP surface</td><td>test_initialize_and_list_tools · test_query_resolved_via_mcp · stdio smoke</td></tr>
+            <tr><td>REQ-F-07 convergence modes</td><td>test_resolved_t1 · test_no_quorum · test_mismatch_evidence_drift · test_gas_exhausted · test_loop_detected</td></tr>
+            <tr><td>REQ-F-08 pluggable verifier</td><td>D2Verifier interface + firewall tests through it</td></tr>
+            <tr><td>REQ-NF-01 stdlib-only</td><td>suite runs with no pip installs</td></tr>
+            <tr><td>REQ-NF-02 T2 privacy</td><td>test_t2_never_remote_by_default</td></tr>
+            <tr><td>REQ-NF-03 offline determinism</td><td>entire suite (~0.05 s, no network)</td></tr>
+            <tr><td>REQ-NF-04 auditability</td><td>test_explain_trace_complete</td></tr>
+            <tr><td>REQ-S-01 honest crypto</td><td>DevSigner labeled, asserted in test_discover_and_status</td></tr>
+            <tr><td>REQ-S-02 TOFU + replay</td><td>test_tofu_pinning · test_discovery_replay_rejected · test_replay_rejected</td></tr>
+            <tr><td>REQ-S-03 injection containment</td><td>test_injection_neutralized</td></tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>5. Roadmap</h2>
+        <ol>
+            <li><strong>L5 property/fuzz</strong> — the termination invariant as a property test.</li>
+            <li><strong>Ed25519 signer</strong> — the one dependency worth making (REQ-S-01).</li>
+            <li><strong>Real NLI verifier</strong> — ONNX int8 cross-encoder behind D2Verifier.</li>
+            <li><strong>../LLMprovider</strong> — appears on disk → drop <code>osp_endpoint.json</code>
+            in it; the adapter activates with zero code changes.</li>
+            <li><strong>Transport adapters</strong> — WhatsApp hub mode + BLE mesh behind the
+            InMemoryHub seam; then L6 interop and the hardware benchmark.</li>
+        </ol>
+    </section>
+
+    <footer>
+        OSP v0.6 — architecture &amp; test plan · 24/24 tests green ·
+        <a href="requirements_v06.html">requirements</a> ·
+        <a href="omni_swarm_protocol.html">v0.4 full</a> ·
+        <a href="osp_lite_v05.html">v0.5 Lite</a> · implementation: <code>mcp/</code>
+    </footer>
+</div>
+</body>
+</html>

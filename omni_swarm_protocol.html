@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Omni-Swarm Protocol (OSP)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg-color: #050505;
+            --surface-color: #111111;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.2);
+            --secondary: #6366f1;
+            --warn: #fbbf24;
+            --bad: #f87171;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2rem;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: clamp(2.2rem, 6vw, 3rem);
+            margin: 0;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2 { color: #ffffff; margin-top: 3rem; border-left: 4px solid var(--primary); padding-left: 1rem; }
+        h3 { color: var(--primary); }
+        a { color: #818cf8; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .card ul { padding-left: 1.1rem; margin: 0.5rem 0 0 0; font-size: 0.88rem; }
+        .card li { margin-bottom: 0.8rem; }
+        .synthesis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .card:hover { border-color: rgba(16, 185, 129, 0.5); }
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+        }
+        .formula {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+            white-space: pre;
+        }
+        .step {
+            display: flex;
+            margin-bottom: 1.5rem;
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .step-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-right: 1.5rem;
+            line-height: 1;
+        }
+        .feature-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-bottom: 3rem;
+        }
+        .table th, .table td {
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.9rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .table th { background: var(--surface-color); color: #ffffff; }
+        .badge-ok   { color: var(--primary); font-weight: 600; }
+        .badge-warn { color: var(--warn); font-weight: 600; }
+        .badge-bad  { color: var(--bad); font-weight: 600; }
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+        .flow-node {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.85rem;
+        }
+        .flow-node strong { color: var(--primary); }
+        .flow-arrow { color: var(--primary); font-weight: bold; }
+        footer {
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+            padding-top: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>The Omni-Swarm Protocol (OSP)</h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem;">
+            Stateless, SLM-driven, Peer-to-Peer Knowledge Sharing — with structural termination
+            guarantees and a three-layer hallucination firewall.
+        </p>
+    </header>
+
+    <main>
+
+    <section>
+        <h2>The Architecture: Best-of-Breed Synthesis</h2>
+        <p>OSP combines battle-tested patterns from distributed systems (JWT, the actor model, Kademlia,
+        BGP, FIPA, Interledger) with verification techniques from machine learning (NLI entailment,
+        self-consistency sampling, ensemble voting). The result is an exchange mechanism designed for
+        Small LLMs on edge devices in which <strong>every query terminates</strong> and
+        <strong>every accepted answer is verifiable</strong>.</p>
+
+        <div class="synthesis-grid">
+            <div class="card">
+                <span class="feature-tag">From JWT &amp; Actor Model</span>
+                <h3>1. Zero-State Envelopes</h3>
+                <p>Nodes store zero session memory. The full negotiation state travels inside an
+                <strong>Ed25519-signed JWS envelope</strong> (<code>header.payload.signature</code>).
+                Each packet carries a unique <code>jti</code> nonce and a short <code>exp</code> TTL,
+                so any node can verify authenticity and freshness independently — replay and forgery
+                die at the door.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">From Kademlia &amp; BGP</span>
+                <h3>2. Multi-Centroid Routing</h3>
+                <p>No node broadcasts. Each node advertises a <strong>codebook of its top-K RAG
+                centroids</strong>, quantized to int8 (a 384-dim embedding shrinks to 384 bytes), so
+                routing tables stay tiny on edge hardware. This is the centroid-similarity pattern
+                validated for zero-shot task routing [R13][R11], cheap enough to run on a frozen
+                embedding backbone [R12]. Queries route only to nodes whose centroids align with the
+                intent, and BGP's path-vector rule (<em>never appear twice in your own path</em>) makes
+                routing loops structurally impossible. Centroids are not static: verified outcomes
+                drift each advertised centroid toward the query regions where the node actually
+                delivered [R14].</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">From FIPA &amp; Interledger</span>
+                <h3>3. Contracting Auctions with Gas</h3>
+                <p>SLMs never dump raw answers. They bid with a <strong>composite of elicited,
+                measurable signals</strong> — verbalized confidence [R4], semantic certainty [R1], and
+                reputation — never raw logits, which are miscalibrated by construction [R6]. Each bid
+                carries a conformal coverage guarantee [R3]: a distribution-free statistical bound, not
+                a gut feeling. Every hop burns one unit of Gas; when Gas hits zero the packet
+                backtracks home with an explicit failure notice. Negotiation rounds must
+                <em>contract</em> toward agreement or the negotiation aborts.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">From NLI &amp; Ensemble Learning</span>
+                <h3>4. Hallucination Firewall</h3>
+                <p>Three independent verification layers: a <strong>semantic-entropy gate</strong>
+                before any bid is placed [R1] — cheap enough for edge hardware via single-pass linear
+                probes [R2] — local entailment checking of every payload against its cited sources
+                [R5], and a <strong>quorum vote with a provenance-diversity rule</strong> so one bad
+                document echoed by many nodes can never reach consensus.</p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>The Lifecycle of an OSP Query</h2>
+        <p>How two nodes negotiate meaning without ever opening a persistent connection — and how the
+        origin verifies what it receives.</p>
+
+        <div class="step">
+            <div class="step-number">01</div>
+            <div>
+                <h3>PROPOSE (Multi-Centroid Routing)</h3>
+                <p>Node A builds a JWS envelope with <code>gas = G</code>, its int8-quantized intent
+                vector, and an empty trail. It consults its centroid codebook and forwards to the
+                <em>single best-matching neighbor</em> — not to everyone. Every hop repeats this and
+                decrements Gas. Node A also registers the query on <em>its own</em> nodes: it probes
+                the top-K routed nodes in parallel (default K = 3).</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">02</div>
+            <div>
+                <h3>BID (Semantic-Entropy Gate)</h3>
+                <p>Node B's SLM runs <strong>closed-book retrieval</strong>: generation is permitted
+                only over retrieved chunks, and every claim must cite a <code>chunk_hash</code>. Before
+                bidding, B samples itself k times and clusters the samples <em>by meaning</em> (via
+                bidirectional entailment), then computes semantic entropy over the meaning clusters
+                [R1] — token agreement is not enough; two samples can agree lexically while diverging
+                in meaning. On edge hardware, the cheap variant applies: a linear probe on hidden
+                states predicts the entropy in a single forward pass [R2]. High entropy →
+                <strong>B places no bid at all</strong> — a node unsure of its own meaning exits the
+                auction instead of poisoning it. Otherwise B bids a composite score with provenance,
+                a verbalized confidence elicited in a dedicated pass [R4], a conformal coverage
+                guarantee [R3], and an optional <code>CLARIFY</code> offer.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">03</div>
+            <div>
+                <h3>ALIGN (Contracting Semantic Lock)</h3>
+                <p>Node A's SLM maps its ontology onto B's ("hydraulic pump → industrial_water_pump_v2").
+                OSP follows the hybrid pattern that now dominates the OAEI campaigns: embedding
+                prefiltering to propose candidate correspondences, then an LLM pass to refine and
+                justify each one [R7][R8]. Because LLMs are known to hallucinate plausible-but-wrong
+                correspondences in domain-specific matching [R9], every mapping entry must carry
+                <strong>evidence</strong>: both concept IRIs plus their definitional snippets —
+                and it is validated against the local KG before being accepted [R10]. Each clarify
+                round <strong>must shrink</strong> the mapping distance:
+                d<sub>n+1</sub> ≤ γ·d<sub>n</sub>, at most C rounds — otherwise the negotiation aborts
+                with <code>MISMATCH</code>. Once locked, A requires a <strong>quorum (default 2 of 3
+                probes)</strong> whose answers agree semantically <em>and</em> cite diverse sources.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">04</div>
+            <div>
+                <h3>RESOLVE (Hash-Addressable Payload)</h3>
+                <p>The winning node ships the answer in JSON-LD <em>together with the cited chunks
+                themselves</em> (within a size budget). The origin can therefore verify the answer
+                against its evidence without ever trusting the responder's word about its own content.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">05</div>
+            <div>
+                <h3>VERIFY (Local Entailment &amp; Reputation)</h3>
+                <p>The origin runs a tiny NLI pass: answer claims ⊆ cited evidence. Groundedness
+                g ≥ 0.8 → accepted and the responder's reliability score rises. g &lt; 0.8 → rejected,
+                an <code>RFO</code> (Request-Failure) packet returns down the trail, and the
+                responder's reputation decays. Every outcome updates an EWMA reliability that weights
+                all future bids — and the responder's realized groundedness is audited against the
+                coverage its conformal guarantee promised [R3], so systematic over-bidding shows up
+                statistically before it shows up as bad answers.</p>
+            </div>
+        </div>
+
+        <p style="color: var(--text-muted);">Failure is never silent: at <em>any</em> step, gas
+        exhaustion, loop detection, or a stalled alignment emits an <code>RFO</code> backtracked along
+        the recorded trail, so the origin always learns the outcome within ≤ 2G hops.</p>
+    </section>
+
+    <section>
+        <h2>The OSP Packet: JWS Envelope + Payload</h2>
+        <p>Every message is a signed JWS compact serialization. The signature covers the exact payload
+        bytes; receivers verify signature, freshness (<code>exp</code>), and replay (<code>jti</code> cache)
+        before any processing.</p>
+
+        <h3>Envelope (JWS compact, EdDSA / Ed25519)</h3>
+        <div class="code-block">
+base64url(header) . base64url(payload) . base64url(signature)
+
+header = {
+  "alg": "EdDSA",          // asymmetric — no shared secret in a trustless swarm
+  "typ": "OSP+JSON",
+  "kid": "node_b#key-1"    // key id, resolvable via the node's published key set
+}
+        </div>
+
+        <h3>Decoded payload</h3>
+        <div class="code-block">
+{
+  "osp": "0.3",
+  "packet_id": "osp-99f2-4b1c",
+  "jti": "01J9F2-4B1C-Q7",          // unique nonce — cached by receivers, anti-replay
+  "iat": 1760000000,
+  "exp": 1760000060,                 // 60 s life — packets die of old age, not just gas
+
+  "gas_remaining": 3,                // decremented exactly 1 per hop; 0 → backtrack RFO
+  "action": "BID_CLARIFY",
+
+  "semantic_state": {
+    "origin_query": "hydraulic pump failure",
+    "origin_vector": "q8:AAECAw...",  // int8-quantized, base64 — 384 dims = 384 bytes
+    "mapping_distance": 0.18,         // d_n — must strictly decrease each clarify round
+    "negotiation_trail": [
+      {"node": "node_a", "action": "PROPOSE"},
+      {"node": "node_b", "action": "BID_CLARIFY"}
+    ]                                  // path-vector: a node seeing its own id drops the packet
+  },
+
+  "slm_response": {
+    "bid": 0.81,                       // composite — NEVER raw logits (miscalibrated [R6])
+    "bid_components": {
+      "semantic_certainty": 0.75,      // 1 − normalized semantic entropy over k samples [R1]
+      "retrieval_similarity": 0.83,    // cosine(query vector, best cited chunk)
+      "verbalized_confidence": 0.80,   // elicited in a dedicated pass [R4], not logit-derived
+      "reputation": 0.86               // responder's EWMA reliability, r ∈ [0,1]
+    },
+    "conformal_guarantee": {           // distribution-free coverage bound [R3]
+      "method": "stop@k",
+      "target_coverage": 0.90,
+      "realized_risk": 0.07
+    },
+    "provenance": [
+      { "chunk_hash": "sha3-256:9f2c...", "doc_id": "manuals/wp_v2", "score": 0.83 }
+    ],
+    "schema_mapping": {
+      "source_iri": "ex:#hydraulic_pump",
+      "target_iri": "ex:#industrial_water_pump_v2",
+      "evidence": ["definition snippet — source", "definition snippet — target"],  // [R9]
+      "kg_validated": true,              // correspondence checked against local KG [R10]
+      "requires_auth": false
+    }
+  }
+}
+        </div>
+    </section>
+
+    <section>
+        <h2>Convergence &amp; Termination Guarantees</h2>
+        <p>A routing layer for unreliable SLMs is only useful if it cannot livelock. OSP's convergence
+        rests on four structural rules — each one turns "probably terminates" into "cannot fail to
+        terminate."</p>
+
+        <div class="step">
+            <div class="step-number">C1</div>
+            <div>
+                <h3>Gas is strictly monotonic → termination is structural</h3>
+                <p>A node MUST decrement Gas by exactly 1 before forwarding any packet and MUST emit an
+                RFO at Gas = 0. Gas is a bounded non-negative integer that strictly decreases on every
+                transition, so the hop count is ≤ G by construction. No scheduling, luck, or cooperation
+                is required — this is a measure function, not a heuristic.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">C2</div>
+            <div>
+                <h3>Path-vector loop freedom → cycles cannot bounce forever</h3>
+                <p>A node that finds its own id in <code>negotiation_trail</code> drops the packet
+                (<code>LOOP_DETECTED</code>). A per-node LRU cache of seen <code>jti</code> values
+                (TTL ≥ 2× the <code>exp</code> window) drops duplicates and replays. Even before Gas
+                runs out, the trail cannot revisit a node.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">C3</div>
+            <div>
+                <h3>Alignment is a contraction → negotiation cannot oscillate</h3>
+                <p>Each clarify round must report a strictly smaller <code>mapping_distance</code>:
+                the sequence is bounded below by 0 and decreases geometrically, so it converges. A
+                round that fails to shrink the distance aborts with <code>MISMATCH</code> instead of
+                looping — "no progress" is treated as an answer.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">C4</div>
+            <div>
+                <h3>Quorum with provenance diversity → consensus is not an echo chamber</h3>
+                <p>ACCEPT requires a quorum q of k probes whose payload embeddings are pairwise-similar
+                (≥ θ) <em>and</em> whose cited <code>chunk_hash</code> sets span ≥ k−1 distinct sources.
+                Votes citing the <em>same</em> hash count as a single vote. This is what stops one
+                corrupted document propagating k copies of itself into a unanimous "consensus."</p>
+            </div>
+        </div>
+
+        <div class="formula">
+bid = w₁·semantic_certainty + w₂·retrieval_similarity
+    + w₃·verbalized_confidence + w₄·reputation        (Σwᵢ = 1 — never logits [R4][R6])
+
+H = −Σ_clusters p(c)·log p(c)     (semantic entropy over meaning clusters [R1])
+H high → suppress bid · edge variant: SEP linear probe, 1 forward pass [R2]
+
+bid carries P(grounded) ≥ 1 − α   (conformal stop@k — distribution-free [R3])
+
+d(n+1) ≤ γ · d(n),  γ &lt; 1        →  clarify rounds ≤ min( log(d₀/ε) / log(1/γ), C )
+
+P(quorum error) = 3p²(1−p) + p³   (k=3, q=2, per-node residual rate p)
+                 = 2.8 %  when p = 10 %
+
+r_i ← (1−α)·r_i + α·outcome       (EWMA → converges to true reliability)
+        </div>
+
+        <p>Putting it together — <strong>every query ends in one of five modes, all of them
+        explicit</strong>:</p>
+
+        <table class="table">
+            <tr>
+                <th>Outcome</th>
+                <th>Trigger</th>
+                <th>What is on the wire</th>
+            </tr>
+            <tr>
+                <td class="badge-ok">RESOLVED</td>
+                <td>Quorum q of k verified bids, groundedness ≥ 0.8</td>
+                <td>ALIGN → RESOLVE → VERIFY OK; reputations rise</td>
+            </tr>
+            <tr>
+                <td class="badge-warn">MISMATCH</td>
+                <td>Alignment stops contracting within C rounds</td>
+                <td><code>RFO(MISMATCH)</code> backtracked along the trail</td>
+            </tr>
+            <tr>
+                <td class="badge-warn">GAS_EXHAUSTED</td>
+                <td>Gas hits 0 mid-route</td>
+                <td><code>RFO(GAS)</code> backtracked — no silent drops</td>
+            </tr>
+            <tr>
+                <td class="badge-bad">LOOP_DETECTED</td>
+                <td>Own id in trail, or <code>jti</code> already cached</td>
+                <td><code>RFO(LOOP)</code>; packet dies</td>
+            </tr>
+            <tr>
+                <td class="badge-warn">NO_QUORUM</td>
+                <td>Timeout with &lt; q agreeing verified bids</td>
+                <td>Retry with decayed threshold τ ← τ − δ, at most R times, then NACK</td>
+            </tr>
+        </table>
+
+        <p><strong>Liveness.</strong> If the knowledge exists within reach and the overlay is connected,
+        threshold decay (τ − δ per retry, bounded by R) eventually accepts weak-but-grounded bids — so
+        liveness never compromises the termination bound of G + C + R rounds.</p>
+
+        <p><strong>Fault honesty.</strong> OSP fully tolerates crash faults. Byzantine behavior is
+        <em>contained</em>, not prevented: lying bids are filtered by the firewall below, and a node
+        suppressing RFOs merely forces the origin's local timeout — a bounded wait, never a hang.</p>
+    </section>
+
+    <section>
+        <h2>The Hallucination Firewall</h2>
+        <p>An SLM's raw confidence score is <strong>uncalibrated</strong> — a bid of 0.9 means nothing
+        [R6]. OSP therefore never routes on logits. Instead it detects hallucination with three
+        independent, measurable layers — semantic entropy [R1], entailment [R5], and calibrated
+        consensus — so a fabricated answer must survive grounding, entailment, <em>and</em> consensus
+        to be accepted.</p>
+
+        <div class="flow">
+            <div class="flow-node"><strong>GATE</strong> semantic entropy [R1]</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node"><strong>BID</strong> composite score</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node"><strong>ENTAIL</strong> origin-side NLI</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node"><strong>QUORUM</strong> k=3, q=2 + provenance diversity</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node"><strong>ACCEPT</strong> / REJECT + reputation update</div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">L1</div>
+            <div>
+                <h3>Semantic-entropy gate (responder, before any bid)</h3>
+                <p><strong>Closed-book rule:</strong> the SLM generates only over retrieved chunks, and
+                every claim must cite ≥ 1 <code>chunk_hash</code>. An answer with no provenance is not
+                a weak answer — it is not an answer. Then the <strong>semantic-entropy gate</strong>
+                [R1]: sample k times, cluster the samples <em>by meaning</em> (bidirectional
+                entailment), and compute entropy over the meaning clusters. This beats token-level
+                self-consistency because it catches confabulation at the meaning level — the failure
+                mode where a model paraphrases its own error consistently. On edge hardware the full
+                clustering is replaced by a <strong>semantic-entropy probe</strong>: a linear head over
+                hidden states that predicts the entropy in one forward pass, no extra sampling [R2];
+                SelfCheckGPT's NLI-variant consistency check [R5] is the fallback when no probe is
+                trained. High entropy → the node suppresses its own bid entirely: self-detected
+                instability removes the node from the auction instead of poisoning it.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">L2</div>
+            <div>
+                <h3>Local entailment (origin, on every payload)</h3>
+                <p>The RESOLVE payload carries its cited chunks, so the origin runs a tiny NLI pass:
+                groundedness g = entailed claims / total claims. g &lt; 0.8 → the payload is rejected,
+                an RFO is returned, and the responder's reputation decays. This is the load-bearing
+                layer: <strong>verification is local and hash-addressable</strong> — the origin never
+                takes the responder's word about its own content.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">L3</div>
+            <div>
+                <h3>Swarm consensus (network-wide)</h3>
+                <p>Independent nodes make uncorrelated errors, so a quorum vote multiplies residual
+                hallucination rates down: with per-node residual rate p (after L1+L2), k = 3 and q = 2
+                turn p = 10 % into ≈ 2.8 %. The <strong>provenance-diversity rule</strong> keeps the
+                binomial bound honest: agreement only counts when evidence is independent, because
+                "three nodes citing the same wrong manual" is one opinion, not three.</p>
+            </div>
+        </div>
+
+        <p><strong>Reputation closes the loop.</strong> Each node keeps an EWMA reliability r per peer,
+        updated with every verification outcome and used as a multiplicative weight on bids. A node
+        that hallucinates converges to r → 0 and stops winning auctions — the swarm's defense is
+        economic, not just logical.</p>
+    </section>
+
+    <section>
+        <h2>Grounding in Current Research</h2>
+        <p>Every verification mechanism in this document is anchored in recent, peer-reviewed work.
+        The bracketed keys [Rn] used above resolve to this list.</p>
+
+        <div class="synthesis-grid">
+            <div class="card">
+                <h3>Confidence Calibration &amp; Hallucination</h3>
+                <ul>
+                    <li>[R1] Farquhar, Kossen, Kuhn &amp; Gal — <em>Detecting hallucinations in large
+                    language models using semantic entropy</em>, Nature 630 (2024).<br>
+                    <a href="https://www.nature.com/articles/s41586-024-07421-0">nature.com</a></li>
+                    <li>[R2] Kossen et al. — <em>Semantic Entropy Probes: Robust and Cheap Hallucination
+                    Detection in LLMs</em> (2024).<br>
+                    <a href="https://arxiv.org/abs/2406.15927">arXiv:2406.15927</a></li>
+                    <li>[R3] Quach et al. — <em>Conformal Language Modeling</em>, ICLR 2024.<br>
+                    <a href="https://arxiv.org/abs/2306.10193">arXiv:2306.10193</a></li>
+                    <li>[R4] Tian et al. — <em>Just Ask for Calibration</em>, EMNLP 2023.<br>
+                    <a href="https://aclanthology.org/2023.emnlp-main.330/">aclanthology.org</a></li>
+                    <li>[R5] Manakul, Liusie &amp; Gales — <em>SelfCheckGPT: Zero-Resource Black-Box
+                    Hallucination Detection</em>, EMNLP 2023.<br>
+                    <a href="https://arxiv.org/abs/2303.08896">arXiv:2303.08896</a></li>
+                    <li>[R6] Liu et al. — <em>Uncertainty Quantification and Confidence Calibration in
+                    LLMs: A Survey</em> (2025).<br>
+                    <a href="https://arxiv.org/abs/2503.15850">arXiv:2503.15850</a></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Ontology Matching (the ALIGN step)</h3>
+                <ul>
+                    <li>[R7] — <em>Results of the Ontology Alignment Evaluation Initiative 2024</em>,
+                    OM Workshop (2024).<br>
+                    <a href="https://openaccess.city.ac.uk/id/eprint/34615/">openaccess.city.ac.uk</a></li>
+                    <li>[R8] — <em>Results of CMatch in OAEI 2025</em>, OM Workshop (2025).<br>
+                    <a href="https://ceur-ws.org/Vol-4144/om2025-oaei-paper3.pdf">ceur-ws.org</a></li>
+                    <li>[R9] — <em>OAEI-LLM: A Benchmark Dataset for Understanding LLM Hallucinations
+                    in Ontology Matching</em> (2024).<br>
+                    <a href="https://arxiv.org/abs/2409.14038">arXiv:2409.14038</a></li>
+                    <li>[R10] — <em>Ontology Alignment Validation using LLM and KG</em>, OM Workshop
+                    (2025).<br>
+                    <a href="https://ceur-ws.org/Vol-4144/om2025-STpaper3.pdf">ceur-ws.org</a></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Centroid &amp; Semantic Routing</h3>
+                <ul>
+                    <li>[R11] Aurelio AI — <em>semantic-router</em>: embedding-based routing without
+                    LLM calls (2024).<br>
+                    <a href="https://github.com/aurelio-labs/semantic-router">github.com</a></li>
+                    <li>[R12] — <em>LatentGate: Low-Latency Semantic Routing via Frozen-Backbone</em>,
+                    ACL Industry Track (2026).<br>
+                    <a href="https://aclanthology.org/2026.acl-industry.153.pdf">aclanthology.org</a></li>
+                    <li>[R13] — <em>A supervised post-hoc routing framework for task-specific
+                    routing</em> (Centroid Similarity Routing), Neurocomputing (2026).<br>
+                    <a href="https://www.sciencedirect.com/science/article/pii/S0925231226019648">
+                    sciencedirect.com</a></li>
+                    <li>[R14] — <em>Outcome-Aware Tool Selection for Semantic Routers</em> (2026).<br>
+                    <a href="https://arxiv.org/abs/2603.13426">arXiv:2603.13426</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Known Limits</h2>
+        <p>Stated plainly, because a protocol that hides its failure modes is itself a hallucination:</p>
+        <ul>
+            <li><strong>Independence is an assumption.</strong> The L3 bound degrades if nodes share
+            corrupted sources beyond what the diversity rule detects (e.g., two wrong manuals that
+            agree with each other).</li>
+            <li><strong>Byzantine RFO suppression</strong> cannot be fully prevented on hostile paths;
+            the fallback is the origin's bounded local timeout.</li>
+            <li><strong>Centroid staleness:</strong> advertised codebooks lag behind RAG updates;
+            routing recall degrades gracefully but is not instant.</li>
+            <li><strong>Calibration drift:</strong> bid weights (w₁…w₄) and thresholds (τ, θ, g)
+            need periodic re-validation on real traffic, or the firewall slowly goes soft [R6].
+            Conformal guarantees additionally assume calibration and query distributions stay
+            exchangeable [R3] — distribution shift weakens the bound silently.</li>
+        </ul>
+    </section>
+
+    </main>
+
+    <footer>
+        OSP v0.4 — draft · Stateless envelopes · Contracting auctions · Structural termination ·
+        Literature-grounded hallucination firewall (R1–R14) ·
+        Edge profile: <a href="osp_lite_v05.html">OSP-Lite (v0.5)</a> ·
+        Remote providers + discovery + MCP: <a href="requirements_v06.html">v0.6 Connect</a>
+    </footer>
+
+</div>
+
+</body>
+</html>

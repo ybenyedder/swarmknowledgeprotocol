@@ -1,0 +1,20 @@
+{
+  "_comment": "OSP v0.6 MCP server configuration. Copy values into env vars — the server reads only the environment (12-factor), this file documents them.",
+  "OSP_PROVIDER_URL": "http://localhost:8080/v1",
+  "OSP_PROVIDER_MODEL": "qwen2.5-1.5b-instruct-q4_k_m",
+  "OSP_PROVIDER_API_KEY": "sk-... (or empty for local servers)",
+  "OSP_SIGNER": "DEV-SIGNER (HMAC-SHA256). Production MUST be Ed25519 — REQ-S-01.",
+  "LLMprovider": {
+    "contract": "When ../LLMprovider/osp_endpoint.json exists it takes precedence over OSP_PROVIDER_URL:",
+    "file": "../LLMprovider/osp_endpoint.json",
+    "schema": {
+      "base_url": "http://localhost:9000/v1",
+      "model": "any-openai-compatible-id",
+      "api_key_env": "LLMPROVIDER_API_KEY"
+    }
+  },
+  "privacy": {
+    "allow_remote_t2": false,
+    "_note": "Tier-2 (sensitive) queries never reach remote providers unless this is set true — REQ-NF-02, default deny."
+  }
+}

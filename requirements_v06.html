@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSP v0.6 "Connect" — Requirements</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { color-scheme: dark; --bg:#050505; --surface:#111; --border:#333; --text:#e0e0e0;
+                --muted:#888; --primary:#10b981; --glow:rgba(16,185,129,.2); --secondary:#6366f1; --warn:#fbbf24; }
+        body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text);
+               line-height:1.7; margin:0; padding:2rem; }
+        .container { max-width:1000px; margin:0 auto; }
+        header { border-bottom:1px solid var(--border); padding-bottom:2rem; margin-bottom:3rem; }
+        h1 { font-size:clamp(2.2rem,6vw,3rem); margin:0; background:linear-gradient(to right,var(--primary),var(--secondary));
+             -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        h2 { color:#fff; margin-top:3rem; border-left:4px solid var(--primary); padding-left:1rem; }
+        h3 { color:var(--primary); }
+        a { color:#818cf8; text-decoration:none; } a:hover { text-decoration:underline; }
+        code { color:#a78bfa; }
+        .table { width:100%; border-collapse:collapse; font-size:.88rem; margin-bottom:2rem; }
+        .table th,.table td { border:1px solid var(--border); padding:.55rem .8rem; text-align:left; vertical-align:top; }
+        .table th { background:var(--surface); color:#fff; }
+        .req { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+               padding:1rem 1.5rem; margin-bottom:1rem; }
+        .req-id { color:var(--primary); font-weight:600; font-size:.85rem; letter-spacing:.5px; }
+        .must { color:#f87171; font-weight:600; } .should { color:var(--warn); font-weight:600; }
+        .may { color:#818cf8; font-weight:600; }
+        .ac { color:var(--muted); font-size:.85rem; margin-top:.4rem; }
+        footer { border-top:1px solid var(--border); margin-top:4rem; padding-top:1.5rem; color:var(--muted); font-size:.85rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>OSP v0.6 "Connect" — Requirements</h1>
+        <p style="color:var(--muted);font-size:1.1rem;">
+            Remote LLM providers · Discovery services · MCP server surface · Testability.
+            Written <em>before</em> implementation, per project rule. Traceability: every
+            requirement cites the test that proves it.
+        </p>
+    </header>
+
+    <section>
+        <h2>Scope &amp; Assumptions</h2>
+        <ul>
+            <li><strong>In scope:</strong> (1) pluggable D3 providers — local SLM, remote
+            OpenAI-compatible endpoint, and an adapter for a future <code>../LLMprovider</code>
+            service; (2) a discovery service (lease-based node directory with node classes);
+            (3) an MCP server exposing OSP operations; (4) an executable test suite proving
+            the convergence and firewall guarantees of v0.4/v0.5.</li>
+            <li><strong>Assumption (verified 2026-09-17):</strong> <code>../LLMprovider</code>,
+            <code>../harnessdroid</code>, <code>../whatsapp</code> do not exist on disk yet. All
+            three are integrated against <em>documented contracts</em>, flagged as such, not against
+            real code.</li>
+            <li><strong>Environment:</strong> Python 3.13, Node 20, no <code>mcp</code> package
+            installed ⇒ the MVP server is stdlib-only JSON-RPC 2.0 over stdio (MCP wire format),
+            swappable for the official SDK later (REQ-NF-01).</li>
+            <li><strong>Preserved invariants:</strong> all v0.4 convergence rules (gas monotonicity,
+            path-vector loops, mapping contraction, quorum + provenance diversity) and the three
+            firewall layers. Remote providers must not weaken them — see REQ-F-02.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Functional Requirements</h2>
+
+        <div class="req"><span class="req-id">REQ-F-01</span> <span class="must">MUST</span> — Pluggable D3 provider binding
+            <p>The D3 rung (generation) SHALL be an interface with three implementations:
+            local SLM stub, remote OpenAI-compatible endpoint
+            (<code>OSP_PROVIDER_URL</code>/<code>OSP_PROVIDER_MODEL</code>/<code>OSP_PROVIDER_API_KEY</code>),
+            and a file-contract adapter for <code>../LLMprovider</code>
+            (reads <code>../LLMprovider/osp_endpoint.json</code> when present). Switching providers
+            is a configuration change only; protocol tests MUST pass unchanged under any provider.</p>
+            <p class="ac">AC: <code>test_provider_swap_equality</code> — the same query suite runs green with EchoGrounded and with a scripted remote stub.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-02</span> <span class="must">MUST</span> — Providers are untrusted generators
+            <p>A remote provider receives only: the query, the retrieved chunks (with hashes), and a
+            grounding instruction. Its output is <em>data, never authority</em>: it goes through the
+            full firewall (L2 entailment, quorum tiers, reputation) exactly like a local answer.
+            A provider that ignores its evidence MUST produce a rejected outcome, never an
+            accepted one.</p>
+            <p class="ac">AC: <code>test_confabulating_provider_rejected</code> — confabulating provider wins the auction ⇒ outcome REJECTED, reputation decays.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-03</span> <span class="must">MUST</span> — Node classes in discovery
+            <p>Nodes declare a class: <strong>N1 thin</strong> (D0–D1 only, no generation),
+            <strong>N2 full</strong> (local D3), <strong>N3 provider-backed</strong> (remote D3).
+            Discovery records the class; origin nodes route RESOLVE-stage work only to nodes whose
+            class can serve it. An N1 node participates in routing and pre-bidding but MUST abstain
+            from generation.</p>
+            <p class="ac">AC: <code>test_thin_node_delegates</code> — query routed through an N1 node resolves via an N3 node; <code>test_budget_exhausted_abstains</code> — N3 with empty budget abstains from RESOLVE.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-04</span> <span class="must">MUST</span> — Cost accounting for remote D3
+            <p>Every D3 invocation charges the node budget (generations, and for remote providers:
+            tokens + estimated cost). Budget exhaustion degrades the node to D0/D1-only
+            participation (it still routes and pre-bids). Daily caps are configurable.</p>
+            <p class="ac">AC: <code>test_budget_exhausted_abstains</code>; <code>osp_status</code> reports budget state.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-05</span> <span class="must">MUST</span> — Discovery service
+            <p>A lease-based directory SHALL provide: <code>register</code> / <code>renew</code> /
+            <code>expire</code> / <code>lookup</code>. A record carries: node_id, key bundle
+            (signing key + prekey), endpoints, transports, node class, topic codebook, lease TTL.
+            Expired leases are invisible to lookup. Bootstrap order: configured seeds → mDNS (LAN,
+            future) → directory (WAN). The MVP ships the in-memory directory and its interface.</p>
+            <p class="ac">AC: <code>test_discovery_lease_expiry</code>, <code>test_discovery_topk_lookup</code>.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-06</span> <span class="must">MUST</span> — MCP server surface
+            <p>An MCP stdio server (JSON-RPC 2.0, newline-delimited) SHALL expose:
+            <code>osp_query(text, tier)</code>, <code>osp_discover(topic, top_k)</code>,
+            <code>osp_advertise(topic, klass)</code>, <code>osp_status()</code>,
+            <code>osp_explain(query_id)</code>. The dispatcher MUST be callable in-process for
+            testing without spawning a process. Tool outputs include the outcome mode and an audit
+            trace.</p>
+            <p class="ac">AC: <code>test_mcp_dispatch_smoke</code> — initialize → tools/list → tools/call round-trip in-process.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-07</span> <span class="must">MUST</span> — Semantic preservation
+            <p>All five convergence modes and their triggers are preserved in provider mode:
+            RESOLVED, MISMATCH, GAS_EXHAUSTED, LOOP_DETECTED, NO_QUORUM — plus REJECTED (firewall).
+            Worst-case termination stays bounded at G + C + R rounds.</p>
+            <p class="ac">AC: <code>test_resolved_t1</code>, <code>test_mismatch_contraction</code>,
+            <code>test_gas_exhausted</code>, <code>test_loop_detected</code>,
+            <code>test_no_quorum</code>, <code>test_replay_rejected</code>.</p>
+        </div>
+
+        <div class="req"><span class="req-id">REQ-F-08</span> <span class="should">SHOULD</span> — Pluggable D2 verifier
+            <p>The entailment check is an interface. The MVP ships a deterministic lexical verifier
+            (clearly marked dev-grade); a real NLI cross-encoder or provider-based checker plugs in
+            behind the same interface. Outcomes MUST NOT depend on which verifier implementation is
+            installed, only on groundedness results.</p>
+            <p class="ac">AC: interface exists; <code>test_confabulating_provider_rejected</code> passes through it.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Non-Functional Requirements</h2>
+
+        <div class="req"><span class="req-id">REQ-NF-01</span> <span class="must">MUST</span> — Zero third-party runtime dependencies (MVP)
+            <p>The server and tests run on Python 3.13 stdlib only. The official MCP SDK migration
+            path is documented; the transport layer is isolated behind one module so the swap is
+            mechanical.</p>
+            <p class="ac">AC: test suite runs on a clean venv with no pip installs.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-NF-02</span> <span class="must">MUST</span> — Privacy tiering for remote providers
+            <p>Tier T2 (sensitive) queries MUST NOT be sent to remote providers unless explicitly
+            allowed in configuration (<code>allow_remote_t2: false</code> by default). Providers
+            receive evidence chunks, never the local RAG itself.</p>
+            <p class="ac">AC: <code>test_t2_never_remote_by_default</code>.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-NF-03</span> <span class="must">MUST</span> — Deterministic, offline tests
+            <p>No test makes a network call. Stub providers are deterministic. Randomness only via
+            fixed seeds.</p>
+            <p class="ac">AC: CI-safe run on airplane-mode machine.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-NF-04</span> <span class="should">SHOULD</span> — Auditability
+            <p>Every query produces a trace (packets, verdicts, costs) retrievable via
+            <code>osp_explain</code> — a protocol that rejects answers must be able to show why.</p>
+            <p class="ac">AC: <code>test_explain_trace_complete</code>.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-NF-05</span> <span class="should">SHOULD</span> — Latency budget
+            <p>Remote-provider path adds ≤ 5 s p50 over the local path (target, measured later on
+            real hardware — all §7 numbers in v0.5 remain modeled until then).</p>
+            <p class="ac">AC: benchmark harness exists; numbers reported, not asserted in CI.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Security Requirements</h2>
+
+        <div class="req"><span class="req-id">REQ-S-01</span> <span class="must">MUST</span> — Honest cryptography posture
+            <p>The MVP signer is HMAC-SHA256 over canonical JSON and is labeled
+            <code>DEV-SIGNER</code> everywhere it appears. Production SHALL use Ed25519 (RFC 8032)
+            via COSE/JWS as specified in v0.4. Deploying with the dev signer is a spec violation,
+            not a configuration.</p>
+            <p class="ac">AC: signer interface isolated; label asserted in code and README.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-S-02</span> <span class="must">MUST</span> — TOFU key pinning in discovery
+            <p>Directory registration pins the first key bundle seen per node_id; a changed bundle is
+            rejected unless an explicit re-pinning action is taken. Discovery announcements are
+            subject to the same replay protection (jti cache) as protocol packets.</p>
+            <p class="ac">AC: <code>test_tofu_pinning</code>, <code>test_discovery_replay_rejected</code>.</p>
+        </div>
+        <div class="req"><span class="req-id">REQ-S-03</span> <span class="must">MUST</span> — Provider prompt-injection containment
+            <p>Evidence chunks are quoted data inside the grounding envelope; directive-looking text
+            inside chunks is neutralized by the envelope, and provider output is never executed —
+            only verified. The MVP ships a naive directive-stripper and marks it as such.</p>
+            <p class="ac">AC: <code>test_injection_neutralized</code> — a chunk containing an
+            instruction to ignore context still yields a grounded or rejected answer.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Explicit Non-Goals (v0.6)</h2>
+        <ul>
+            <li>Real WhatsApp / BLE transports (interfaces only; see v0.5 §4).</li>
+            <li>mDNS/LAN bootstrap (directory interface anticipates it; implementation later).</li>
+            <li>Ed25519 (pending a crypto dependency decision — the only justified deviation from
+            REQ-NF-01 when it happens).</li>
+            <li>Multi-server interop over real transports (in-memory hub first).</li>
+        </ul>
+    </section>
+
+    <footer>
+        OSP v0.6 requirements — draft · Remote D3 · Discovery · MCP · 16 requirements, 15 testable ·
+        <a href="osp_connect_v06.html">Architecture &amp; test plan</a> ·
+        <a href="omni_swarm_protocol.html">v0.4 full</a> · <a href="osp_lite_v05.html">v0.5 Lite</a>
+    </footer>
+</div>
+</body>
+</html>

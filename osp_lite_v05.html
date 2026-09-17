@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSP-Lite (v0.5) — The Edge Profile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg-color: #050505;
+            --surface-color: #111111;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.2);
+            --secondary: #6366f1;
+            --warn: #fbbf24;
+            --bad: #f87171;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2rem;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: clamp(2.2rem, 6vw, 3rem);
+            margin: 0;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2 { color: #ffffff; margin-top: 3rem; border-left: 4px solid var(--primary); padding-left: 1rem; }
+        h3 { color: var(--primary); }
+        a { color: #818cf8; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .synthesis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .card:hover { border-color: rgba(16, 185, 129, 0.5); }
+        .card ul { padding-left: 1.1rem; margin: 0.5rem 0 0 0; font-size: 0.88rem; }
+        .card li { margin-bottom: 0.8rem; }
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+        }
+        .formula {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+        }
+        .step {
+            display: flex;
+            margin-bottom: 1.5rem;
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .step-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-right: 1.5rem;
+            line-height: 1;
+        }
+        .feature-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-bottom: 3rem;
+        }
+        .table th, .table td {
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.9rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .table th { background: var(--surface-color); color: #ffffff; }
+        .badge-ok   { color: var(--primary); font-weight: 600; }
+        .badge-warn { color: var(--warn); font-weight: 600; }
+        .badge-bad  { color: var(--bad); font-weight: 600; }
+        footer {
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+            padding-top: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>OSP-Lite — The Edge Profile</h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem;">
+            The Omni-Swarm Protocol constrained to sub-1.5B models on phones, running as a service —
+            designed for <strong>harnessdroid</strong> (Android service host) and
+            <strong>WhatsApp</strong> (chat-app transport). Companion to the
+            <a href="omni_swarm_protocol.html">full profile (v0.4)</a>.
+        </p>
+    </header>
+
+    <main>
+
+    <section>
+        <h2>0. Why a Second Profile</h2>
+        <p>The full protocol (v0.4) assumes the model can afford multi-sample gates, verbalized
+        confidence passes, and full-payload resolution. On a mid-range phone running a 0.5–1.5B model
+        at 4-bit, one generation is 5–12 seconds — <strong>the expensive resource is not bandwidth,
+        it is model invocations</strong>. OSP-Lite is not a reduced OSP; it is the same protocol with
+        its cost structure inverted: <em>generation-once, decide-cheap-always</em>.</p>
+
+        <table class="table">
+            <tr>
+                <th></th>
+                <th>Full profile (v0.4)</th>
+                <th>Lite profile (v0.5)</th>
+            </tr>
+            <tr>
+                <td><strong>Target model</strong></td>
+                <td>3B–8B quantized</td>
+                <td>0.5B–1.5B, 4-bit (Q4_K_M), ~0.4–0.9 GB resident</td>
+            </tr>
+            <tr>
+                <td><strong>SLM generations / query</strong></td>
+                <td>~6 (k-sample gate, verbalized pass, mapping, answer)</td>
+                <td><strong>1</strong> (only the auction winner generates)</td>
+            </tr>
+            <tr>
+                <td><strong>Bid gate</strong></td>
+                <td>Semantic entropy over k samples [R1]</td>
+                <td>Retrieval agreement + SEP probe [R2] — zero generation</td>
+            </tr>
+            <tr>
+                <td><strong>Wire format</strong></td>
+                <td>JWS + verbose JSON (~3 KB)</td>
+                <td>Deterministic CBOR + COSE [A1][A2], ≤ 1.8 KB, base64url</td>
+            </tr>
+            <tr>
+                <td><strong>Quorum</strong></td>
+                <td>k=3, q=2</td>
+                <td>Tiered: T0 k=1 · T1 k=2 q=2 · T2 k=3 q=2</td>
+            </tr>
+            <tr>
+                <td><strong>Transport</strong></td>
+                <td>Direct (mesh)</td>
+                <td>Hub (WhatsApp groups as topic channels) + mesh fallback</td>
+            </tr>
+            <tr>
+                <td><strong>Worst-case rounds</strong></td>
+                <td>G + C + R = 4+3+3 = 10</td>
+                <td>G + C + R = 3+1+2 = <strong>6</strong></td>
+            </tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>1. The Decision Ladder — the core optimization</h2>
+        <p>Most protocol decisions do not need a language model at all. OSP-Lite classifies every
+        decision onto a four-rung ladder and enforces one rule: <strong>a decision MUST use the
+        lowest rung that suffices.</strong></p>
+
+        <table class="table">
+            <tr>
+                <th>Rung</th>
+                <th>Mechanism</th>
+                <th>Cost (mid-range phone)</th>
+                <th>OSP decisions</th>
+            </tr>
+            <tr>
+                <td class="badge-ok">D0</td>
+                <td>Vector math: Hamming (popcount) / cosine over binary-quantized embeddings</td>
+                <td>~µs, no model loaded</td>
+                <td>Routing, centroid match, quorum aggregation, similarity scoring</td>
+            </tr>
+            <tr>
+                <td class="badge-ok">D1</td>
+                <td>Linear probes: SEP head [R2] over embedder hidden states, calibration tables</td>
+                <td>~0.1 ms</td>
+                <td>Bid gating (hallucination-risk pre-screen), conformal lookup</td>
+            </tr>
+            <tr>
+                <td class="badge-warn">D2</td>
+                <td>Small cross-encoder NLI (e.g. DeBERTa-v3-xsmall class, ~70M, int8)</td>
+                <td>~10–30 ms / pair</td>
+                <td>Chunk-agreement gate, payload entailment (VERIFY), audit</td>
+            </tr>
+            <tr>
+                <td class="badge-bad">D3</td>
+                <td>The SLM itself (0.5–1.5B, 4-bit)</td>
+                <td>5–12 s / 200 tokens</td>
+                <td><strong>Only:</strong> ontology mapping on cache miss, and answer generation for the winning bid</td>
+            </tr>
+        </table>
+
+        <div class="formula">
+1-bit packing:  384d float32 = 1536 B  →  int8 = 384 B  →  binary = 48 B (+ fp32 scale)
+1M chunks ≈ 48 MB of vectors + text.  Query side stays float (asymmetric scoring [A8]).
+
+Generation budget rule:  budget(SLM, node) = N_gen/day  (default 50, configurable)
+D3 calls MUST be charged to the budget; exhausted budget → node bids D0/D1 scores only
+and abstains from RESOLVE.        </div>
+    </section>
+
+    <section>
+        <h2>2. The Lifecycle, Reground for Cheap Decisions</h2>
+        <p>Same five steps, restructured so that generation happens exactly once.</p>
+
+        <div class="step">
+            <div class="step-number">01</div>
+            <div>
+                <h3>PROPOSE (D0 — no model)</h3>
+                <p>Origin quantizes the query to a 384-bit code, matches it against its cached
+                centroid codebook (48 B per centroid per peer), and submits the query to its chosen
+                channel. In <strong>hub mode</strong> that is one WhatsApp group — star topology,
+                loop-free by construction, no trail needed beyond provenance. In <strong>mesh
+                mode</strong> it is the full path-vector forwarding of the base protocol.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">02</div>
+            <div>
+                <h3>PRE-BID (D0+D1+D2 — zero generation)</h3>
+                <p>Each responder retrieves top chunks and scores a <strong>generation-free
+                bid</strong>: retrieval similarity (D0), cross-chunk agreement — pairwise NLI over the
+                top-3 chunks (D2), the SEP probe on hidden states (D1), and reputation. Honest
+                substitution: full semantic entropy [R1] needs sampled generations, so Lite uses
+                retrieval-side agreement as its proxy; the full gate remains available in mesh mode
+                with bigger models. A conformal coverage number comes from the node's calibration
+                table [R3] — a lookup, not a computation. <strong>The SLM is not loaded.</strong></p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">03</div>
+            <div>
+                <h3>ALIGN (cache-first, C = 1)</h3>
+                <p>Mapping is LRU-cached per (peer, concept-pair) with a 7-day TTL and validated
+                evidence [R9][R10]; D3 runs only on a cache miss. At most <strong>one</strong> clarify
+                round is permitted (C = 1); the contraction rule of the base protocol
+                (d<sub>n+1</sub> ≤ γ·d<sub>n</sub>) still applies — no progress still aborts with
+                MISMATCH.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">04</div>
+            <div>
+                <h3>RESOLVE (the single generation)</h3>
+                <p><strong>Only the auction winner loads the SLM.</strong> It generates a
+                ≤ 128-token answer over its retrieved chunks and ships <strong>digest-first</strong>:
+                chunk hashes + a 256-character head (≤ 2 KB). The origin pulls the full chunk only if
+                VERIFY flags ambiguity — saving ~70 % of payload bytes on chat transports.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">05</div>
+            <div>
+                <h3>VERIFY (D2, reputation-scaled audit)</h3>
+                <p>The origin runs entailment on the answer against the digest (and full chunk if
+                pulled). Audit intensity scales with reputation: unknown nodes are verified 100 %,
+                warm nodes 25 %, trusted nodes every 8th query with mandatory spot audits. Over-bidding
+                is caught by a sequential probability ratio test over realized groundedness — the
+                conformal promise each node makes in its bids is audited statistically, not per-message.</p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>3. Wire Format — CBOR-Lite</h2>
+        <p>Deterministic CBOR [A1] with a COSE Ed25519 signature [A2] replaces verbose JSON. The
+        signature covers the canonical CBOR bytes, so text transports that normalize Unicode or trim
+        whitespace can never invalidate a packet — they only touch the base64url wrapper.</p>
+
+        <table class="table">
+            <tr><th>Encoding</th><th>Typical BID packet</th></tr>
+            <tr><td>v0.4 compact JSON + JWS</td><td>~2.9 KB</td></tr>
+            <tr><td>CBOR deterministic (binary)</td><td>~0.9 KB</td></tr>
+            <tr><td>+ COSE sig, base64url, human preamble</td><td><strong>~1.4 KB</strong> (budget: 1.8 KB)</td></tr>
+        </table>
+
+        <div class="code-block">
+⟨OSP⟩ pump query · bids 2/2 · v0.5
+OSP1:omlkY29zaW9zcDVCQklEX2...   ← base64url(deterministic CBOR + COSE Ed25519)
+
+// decoded view (fields of the v0.4 payload, minus):
+//   - origin_vector float array  → 384-bit packed code, 48 B
+//   - verbalized_confidence      → DROPPED (see Known Limits)
+//   - full chunk payload         → digest + 256-char head, pulled on demand
+// deltas: BID/CLARIFY amendments carry only changed fields + seq, not the full packet
+        </div>
+
+        <p><strong>Stakes tiers</strong> size the consensus to the question — cheap questions get
+        cheap consensus:</p>
+        <table class="table">
+            <tr><th>Tier</th><th>Use case</th><th>Quorum</th><th>Error bound (p = 10 %)</th></tr>
+            <tr><td class="badge-ok">T0</td><td>Casual lookup</td><td>k=1, always verified</td><td>p, but 100 % entailment-checked</td></tr>
+            <tr><td class="badge-ok">T1</td><td>Default</td><td>k=2, q=2, distinct chunk hashes</td><td>p² = 1 %</td></tr>
+            <tr><td class="badge-warn">T2</td><td>Sensitive (auth, medical, payments)</td><td>k=3, q=2, full audit</td><td>≈ 2.8 %</td></tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>4. Transport Bindings</h2>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <span class="feature-tag">Hub mode — WhatsApp</span>
+            <h3>The group chat is the overlay</h3>
+            <p>A WhatsApp group is a <strong>topic-scoped channel</strong>: its description carries
+            the topic centroid (48 B). One PROPOSE reaches every member in one message — routing
+            collapses to channel selection (D0), loops are topologically impossible, and the path-vector
+            machinery is only needed for the mesh fallback.</p>
+            <ul>
+                <li><strong>Message anatomy:</strong> two human-readable lines (so group members can
+                judge or mute the traffic) + <code>OSP1:</code> + base64url blob. ASCII-only — safe
+                against client text mangling.</li>
+                <li><strong>Chat-speed timers:</strong> bid window T<sub>w</sub> = 10 min (vs 5 s in
+                mesh). NO_QUORUM retries back off exponentially (30 min → 2 h → next day), bounded by
+                R = 2.</li>
+                <li><strong>Rate discipline:</strong> WhatsApp enforces per-number messaging tiers and
+                throttles [A6] — centroid advertisements are batched to ≤ 1 message/day/group, queries
+                are coalesced, and the service treats WhatsApp as store-and-forward with no delivery
+                guarantee: jti dedup + origin-side ACK provide the actual reliability.</li>
+                <li><strong>Metadata honesty:</strong> WhatsApp gives transport-level encryption, not
+                OSP-level authenticity — Ed25519 signatures stay the source of truth. Meta observes
+                traffic metadata; topics considered sensitive SHOULD enable the optional payload
+                encryption (X25519 + AEAD, keys via the node key directory) and SHOULD assume topic
+                names leak.</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <span class="feature-tag">Mesh mode — direct</span>
+            <h3>When devices can see each other</h3>
+            <p>On LAN or Bluetooth, harnessdroid nodes connect directly (TCP or BLE) and run the full
+            profile rules: path-vector trails, G = 4, T<sub>w</sub> = 5 s, full semantic-entropy
+            gates. Hub and mesh interoperate — a query that finds no quorum in its WhatsApp channel
+            may be re-proposed on mesh to co-located nodes before threshold decay.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>5. The harnessdroid Service</h2>
+        <p><em>Assumption stated: <code>../harnessdroid</code> does not exist yet on disk; this
+        section specifies the service contract an Android host must satisfy.</em></p>
+
+        <div class="code-block">
+app(s) ──AIDL──▶ OSP-Lite Service (foreground, type=dataSync)
+                   ├─ Router        D0 · centroid cache (48 B/centroid, LRU)
+                   ├─ Gatekeeper    D1 SEP head · D2 NLI (ONNX int8)
+                   ├─ Negotiator    mapping LRU · conformal tables · stakes tiers
+                   ├─ Verifier      D2 · audit scheduler (reputation-scaled, SPRT)
+                   ├─ Transport     WhatsApp bridge (NotificationListener/Cloud API)
+                   │                · mesh (TCP/BLE, RFCOMM)
+                   └─ Store         SQLite + packed 48 B bitvectors
+                        ▲ shared runtimes, one instance each
+        llama.cpp (SLM 0.5–1.5B Q4)  ·  ONNX Runtime Mobile (embedder 384d)
+
+// IOspService.aidl
+interface IOspService {
+    String submitQuery(in String text, in int stakesTier);      // → queryId
+    void registerCallback(in String queryId, in IOspCallback cb);
+    void advertiseCentroid(in byte[] cborCodebook);              // ≤ 1 KB
+    byte[] fetchKeyBundle(in String nodeId);                     // Ed25519 + X25519 prekey
+}
+oneway interface IOspCallback {
+    void onOutcome(in String queryId, in int mode, in String answer,
+                   in byte[] verifyReport);
+}
+        </div>
+
+        <ul>
+            <li><strong>Runtimes:</strong> llama.cpp or MediaPipe LLM Inference [A4][A5] for the SLM;
+            ONNX Runtime Mobile for the embedder, NLI cross-encoder, and SEP head. One shared model
+            instance; requests are coalesced across apps.</li>
+            <li><strong>Scheduling:</strong> gossip, centroid advertisement, and calibration refresh
+            run as WorkManager jobs constrained to unmetered + charging [A7]; foreground queries are
+            exempt. Doze-safe: no always-on sockets in hub mode.</li>
+            <li><strong>Budgets:</strong> SLM ≤ 50 generations/day (configurable); ≤ 4 background
+            wakeups/day; RAG store of 1M chunks ≈ 48 MB vectors + SQLite text.</li>
+            <li><strong>Battery rule:</strong> when the generation budget or battery saver is active,
+            the node degrades to D0/D1-only participation — routing and pre-bidding stay alive,
+            generation stops.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>6. Convergence under Lite Constraints</h2>
+        <p>The four structural rules of the base protocol survive untouched, and the bounds actually
+        tighten:</p>
+        <ul>
+            <li><strong>Gas G = 3, C = 1, R = 2</strong> → worst case 6 rounds instead of 10.</li>
+            <li><strong>Hub mode is loop-free by construction</strong> (star topology); C2's trail
+            check remains as provenance and for mesh mode.</li>
+            <li><strong>T1 quorum (k=2, q=2, distinct chunk hashes)</strong> needs both votes to
+            agree on independent evidence — error p² = 1 % at p = 10 %, <em>better</em> than the
+            full profile's 2.8 %, at the cost of needing a second responder (else the query falls
+            back to T0: single answer, 100 % verified).</li>
+            <li><strong>Honest caveat:</strong> reputation-scaled audit (1-in-8 for trusted nodes)
+            trades the per-message guarantee for a statistical one — the SPRT bounds the expected
+            number of unverified bad answers accepted per interval; a single audit failure resets the
+            node to 100 % verification. This is a deliberate economy, not an omission.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>7. Cost Ledger</h2>
+        <p><em>Modeled estimates for a mid-range phone, per query at tier T1 — to be validated on
+        target hardware before being trusted.</em></p>
+        <table class="table">
+            <tr><th>Resource</th><th>Full (v0.4)</th><th>Lite (v0.5)</th></tr>
+            <tr><td>SLM generations</td><td>~6</td><td><strong>1</strong></td></tr>
+            <tr><td>Wire bytes / query</td><td>~4.5 KB</td><td><strong>~1.4 KB</strong></td></tr>
+            <tr><td>Non-generative inference</td><td>1 embed + NLI</td><td>1 embed + SEP + ≤ 3 NLI pairs</td></tr>
+            <tr><td>End-to-end (mesh, fast path)</td><td>~45 s</td><td><strong>~15 s</strong> (1 generation dominates)</td></tr>
+            <tr><td>RAG vector store / 1M chunks</td><td>384 MB (int8)</td><td><strong>48 MB</strong> (binary)</td></tr>
+            <tr><td>Battery-saver mode</td><td>node offline</td><td><strong>still routes &amp; pre-bids</strong></td></tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>8. Known Limits</h2>
+        <ul>
+            <li><strong>Verbalized confidence is dropped [R4].</strong> Its evidence base is
+            RLHF-scale models; on 0.5B models it is unreliable, so Lite bets on retrieval similarity
+            + SEP + reputation. If the SLM grows, the field returns.</li>
+            <li><strong>The semantic-entropy gate is a proxy here.</strong> Cross-chunk NLI agreement
+            approximates, but does not equal, sampled semantic entropy [R1]; it can miss a model that
+            confabulates consistently <em>with</em> its retrieved chunks.</li>
+            <li><strong>Audit sampling weakens per-message guarantees</strong> to statistical bounds
+            (see §6) — deliberately, for energy.</li>
+            <li><strong>WhatsApp is a third-party dependency:</strong> rate tiers [A6], metadata
+            exposure, account bans, and no delivery SLA. The mesh binding exists precisely so the
+            protocol survives WhatsApp's absence.</li>
+            <li><strong>The CBOR blob is opaque to humans</strong> — the two-line preamble is the
+            only human-auditable part of a message.</li>
+            <li><strong>All §7 numbers are modeled,</strong> not measured. First implementation
+            milestone is a hardware benchmark, not a feature.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>9. References</h2>
+        <p>[R1]–[R14] are shared with the <a href="omni_swarm_protocol.html">full profile</a>.
+        Annex references introduced by this profile:</p>
+        <div class="synthesis-grid">
+            <div class="card">
+                <h3>Formats</h3>
+                <ul>
+                    <li>[A1] — <em>Concise Binary Object Representation (CBOR)</em>, RFC 8949.<br>
+                    <a href="https://www.rfc-editor.org/rfc/rfc8949">rfc-editor.org</a></li>
+                    <li>[A2] — <em>CBOR Object Signing and Encryption (COSE)</em>, RFC 9052/9053.<br>
+                    <a href="https://www.rfc-editor.org/rfc/rfc9052">rfc-editor.org</a></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>On-device runtimes</h3>
+                <ul>
+                    <li>[A3] Reimers &amp; Gurevych — <em>Sentence-BERT</em> (MiniLM-L6 class, 384d
+                    embedder), EMNLP 2019.<br>
+                    <a href="https://arxiv.org/abs/1908.10084">arXiv:1908.10084</a></li>
+                    <li>[A4] — <em>llama.cpp</em>: GGUF/Q4 inference on consumer hardware.<br>
+                    <a href="https://github.com/ggml-org/llama.cpp">github.com</a></li>
+                    <li>[A5] — <em>MediaPipe LLM Inference API</em> (Android on-device LLM).<br>
+                    <a href="https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference">
+                    ai.google.dev</a></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Platform constraints</h3>
+                <ul>
+                    <li>[A6] Meta — <em>WhatsApp Business Cloud API: messaging &amp; rate limits</em>.<br>
+                    <a href="https://developers.facebook.com/docs/whatsapp/cloud-api">
+                    developers.facebook.com</a></li>
+                    <li>[A7] Android — <em>Background execution limits / Doze / WorkManager
+                    constraints</em>.<br>
+                    <a href="https://developer.android.com/topic/libraries/components/background">
+                    developer.android.com</a></li>
+                    <li>[A8] Jégou et al. — <em>Hamming Embedding / Product Quantization</em>
+                    (asymmetric binary scoring), IEEE TPAMI 2011.<br>
+                    <a href="https://hal.inria.fr/inria-00514462v2/document">hal.inria.fr</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    <footer>
+        OSP v0.5 (Lite) — draft · Generation-once · Decision ladder D0–D3 · CBOR ≤ 1.8 KB ·
+        Hub (WhatsApp) + mesh ·
+        Remote providers + discovery + MCP: <a href="requirements_v06.html">v0.6 Connect</a>
+    </footer>
+</div>
+
+</body>
+</html>
