@@ -36,11 +36,15 @@ class MainActivity : AppCompatActivity() {
     /** one-shot: peer card fields refilled from the persisted peer table */
     private var peerFieldsRestored = false
 
-    /** Field-tested examples: the "new mail" scenario against the bot peer. */
+    /** Field-tested examples: the "new mail" scenario against the bot peer.
+     *  The "3ème article" chip demonstrates honest abstention: the indexed
+     *  proof doesn't number articles, so the swarm must refuse (INSUFFICIENT_
+     *  EVIDENCE / firewall) rather than guess one. */
     private val examples = listOf(
         "résume le document justificatif de ressources",
         "quelle est la date de l'engagement financier",
         "résume le magazine de robotique reçu",
+        "résume le 3ème article du magazine de robotique",
         "que montre la vidéo reçue aujourd'hui",
     )
 
