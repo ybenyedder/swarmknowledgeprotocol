@@ -26,7 +26,10 @@ throughout this text:
   ladder D0–D3, WhatsApp hub and mesh transports);
 - `[3]` `requirements_v06.html` — **v0.6 "Connect"** numbered requirements (REQ-\*);
 - `[4]` `osp_connect_v06.html` — v0.6 architecture, sequence diagram, test plan
-  L0–L6 and requirement-to-test traceability.
+  L0–L6 and requirement-to-test traceability;
+- `[5]` `osp_paper.html` — technical paper synthesising the design, its research
+  grounding (calibration, ontology matching, centroid routing) and the current
+  validation status (informative).
 
 Where this README and the referenced documents disagree, `[3]` prevails for
 requirements and `[4]` for architecture.
@@ -58,10 +61,11 @@ The protocol is designed so that:
 | [2] | `osp_lite_v05.html`, OSP v0.5 Lite edge profile |
 | [3] | `requirements_v06.html`, v0.6 requirements (REQ-F, REQ-NF, REQ-S) |
 | [4] | `osp_connect_v06.html`, v0.6 architecture and test plan |
-| [5] | RFC 2119, *Key words for use in RFCs to Indicate Requirement Levels* |
+| [5] | `osp_paper.html`, technical paper (informative) |
+| [6] | RFC 2119, *Key words for use in RFCs to Indicate Requirement Levels* |
 
 The key words **"shall"** (mandatory), **"should"** (recommended) and **"may"**
-(permitted) are used as in [5]. A clause of the form *"The origin shall
+(permitted) are used as in [6]. A clause of the form *"The origin shall
 discard…"* is a testable requirement; clauses marked *(informative)* carry no
 conformance weight.
 
@@ -354,6 +358,7 @@ swarmknowledge_protocol/
 ├── osp_lite_v05.html                [2] v0.5 Lite edge profile
 ├── requirements_v06.html            [3] v0.6 requirements
 ├── osp_connect_v06.html             [4] v0.6 architecture + test plan
+├── osp_paper.html                   [5] technical paper (informative)
 ├── mcp/                             Python reference (stdlib only)
 │   ├── osp_core.py                  protocol core (packets, firewall, tiers)
 │   ├── providers.py                 D3 bindings + dev stubs + envelope

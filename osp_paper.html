@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Omni-Swarm Protocol — Verified Knowledge Negotiation for Very Small Language Models at the Edge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg-color: #050505;
+            --surface-color: #111111;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.2);
+            --secondary: #6366f1;
+            --warn: #fbbf24;
+            --bad: #f87171;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2rem;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: clamp(2rem, 5.5vw, 2.8rem);
+            margin: 0;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2 { color: #ffffff; margin-top: 3rem; border-left: 4px solid var(--primary); padding-left: 1rem; }
+        h3 { color: var(--primary); }
+        a { color: #818cf8; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .abstract {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--secondary);
+            border-radius: 8px;
+            padding: 1.5rem 1.8rem;
+            margin-bottom: 3rem;
+        }
+        .abstract h2 { margin-top: 0; border: none; padding: 0; font-size: 1.1rem; color: var(--secondary); text-transform: uppercase; letter-spacing: 1px; }
+        .keywords { color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem; }
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .card:hover { border-color: rgba(16, 185, 129, 0.5); }
+        .card h3 { margin-top: 0; }
+        .synthesis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .feature-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+            white-space: pre;
+        }
+        .formula {
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #a78bfa;
+            white-space: pre;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-bottom: 3rem;
+        }
+        .table th, .table td {
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.9rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .table th { background: var(--surface-color); color: #ffffff; }
+        .badge-ok   { color: var(--primary); font-weight: 600; }
+        .badge-warn { color: var(--warn); font-weight: 600; }
+        .badge-bad  { color: var(--bad); font-weight: 600; }
+        .refs { font-size: 0.92rem; }
+        .refs ul { list-style: none; padding-left: 0; }
+        .refs li { margin-bottom: 0.7rem; padding-left: 3.2rem; text-indent: -3.2rem; }
+        .refkey { color: var(--primary); font-weight: 600; }
+        footer {
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+            padding-top: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>The Omni-Swarm Protocol</h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem;">
+            Verified Knowledge Negotiation for Very Small Language Models at the Edge
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Technical paper · OSP v0.6 "Connect" · Tree4Five — Omni-Swarm Protocol project · September 2026 ·
+            informative overview of the specification set
+            (<a href="omni_swarm_protocol.html">v0.4</a> ·
+            <a href="osp_lite_v05.html">v0.5 Lite</a> ·
+            <a href="requirements_v06.html">v0.6 requirements</a> ·
+            <a href="osp_connect_v06.html">v0.6 architecture</a>)
+        </p>
+    </header>
+
+    <main>
+
+    <div class="abstract">
+        <h2>Abstract</h2>
+        <p>Very small language models (0.5–1.5 B parameters, 4-bit quantised) running on phones,
+        tablets and single-board computers hallucinate more, cost more per token, and hold less
+        knowledge than their data-centre relatives — yet they sit exactly where personal documents
+        already live. The Omni-Swarm Protocol (OSP) is a stateless, peer-to-peer knowledge-negotiation
+        protocol that lets such devices answer each other's questions <em>only</em> from evidence they
+        verifiably hold, and lets the asker <em>independently verify</em> every answer it accepts.
+        This paper presents the protocol's design principles (verification-not-trust,
+        generation-once, explicit failure, cheapest-decision-first), its mechanics (signed
+        zero-state envelopes, centroid routing, contracting auctions with gas, a bounded negotiation
+        lifecycle), its three-layer hallucination firewall anchored in recent calibration research
+        [R1][R2][R6][R15][R16], and its economics (a decision ladder that cuts SLM invocations from
+        ~6 per query to exactly 1). We report three interoperable implementations in Python, Kotlin
+        and JavaScript (87 conformance tests, zero runtime dependencies, cross-language golden
+        vectors) and a live end-to-end validation across an Android tablet origin, a JavaScript
+        responder with vector retrieval and a local 12 B generator — including the negative result
+        that matters: a text-less video answer is <strong>rejected</strong> by the origin-side
+        groundedness gate with score 0.00. The protocol's stated posture is deliberately honest:
+        every limitation, from miscalibrated bid signals to conformal distribution shift, is part
+        of the specification.</p>
+        <p class="keywords"><strong>Keywords:</strong> peer-to-peer protocols · small language models · edge AI ·
+        hallucination detection · confidence calibration · retrieval-augmented generation ·
+        ontology matching · semantic routing · conformal prediction</p>
+    </div>
+
+    <section>
+        <h2>1 · Introduction</h2>
+        <p>The current deployment geometry of language models is inverted with respect to where
+        knowledge lives. The largest models run in data centres, reachable only through a network
+        round trip; the documents that matter most to a person — payslips, manuals, correspondence,
+        photos' captions — sit on that person's own devices, unreachable from the data centre by
+        design and often by law. Meanwhile the devices themselves have become capable of running
+        4-bit quantised models of 0.5–1.5 B parameters, at 5–12 seconds per 200-token generation.
+        What these tiny models lack is not storage (a phone holds gigabytes of personal text) but
+        two things: <em>reliable access</em> to the right fragment at question time, and
+        <em>trustworthy speech</em> — the ability to say an answer and be believed.</p>
+        <p>OSP addresses both by treating knowledge exchange as a <strong>negotiation between
+        mutually untrusted peers</strong>, in the tradition of contract-net and FIPA-style agent
+        interaction, but with the verification machinery of the modern hallucination literature
+        bolted into the protocol itself rather than delegated to model introspection. The premise
+        is that a 0.5 B model cannot be trusted to know what it does not know: calibration is poor
+        at this scale [R6][R15], and the incentive structure of generative training favours
+        guessing over abstention [R16]. Therefore the protocol, not the model, must carry the
+        epistemic weight.</p>
+        <p>The result is a protocol in which:</p>
+        <ul>
+            <li>a device that <strong>cannot generate at all</strong> (a thin phone, a bot client)
+            can still ask and independently verify the answer it receives;</li>
+            <li>a device that <strong>can generate</strong> may only sell answers grounded in
+            evidence it actually holds and cites;</li>
+            <li>every negotiation terminates in a <strong>bounded number of rounds</strong> and in
+            one of six explicit convergence modes — silence and ungrounded guesses are both
+            protocol violations, not UX accidents;</li>
+            <li>implementations in <strong>different languages interoperate byte-for-byte</strong>
+            over one canonical wire format.</li>
+        </ul>
+        <p>This paper synthesises the three-part specification set — the full profile v0.4
+        (<a href="omni_swarm_protocol.html">[1]</a>), the edge profile v0.5 Lite
+        (<a href="osp_lite_v05.html">[2]</a>), and the v0.6 "Connect" requirements and architecture
+        (<a href="requirements_v06.html">[3]</a>, <a href="osp_connect_v06.html">[4]</a>) — into a
+        single narrative, and reports the implementation and validation status as of September 2026.</p>
+    </section>
+
+    <section>
+        <h2>2 · Design Principles</h2>
+        <div class="synthesis-grid">
+            <div class="card">
+                <span class="feature-tag">Principle 1</span>
+                <h3>Verification, not trust</h3>
+                <p>No node is trusted. The origin trusts only what it can check itself: packet
+                signatures, its own retrieval-competence gate, its own groundedness computation over
+                <em>cited</em> evidence, and reputation it accumulated per sender. Generators —
+                local or remote — are untrusted downstream components (REQ-F-02): their output is
+                data that must survive verification, never authority.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">Principle 2</span>
+                <h3>Generation once</h3>
+                <p>On a mid-range phone a 0.5–1.5 B generation costs 5–12 s and real battery.
+                OSP's cost structure is therefore inverted relative to chat-style RAG:
+                <strong>only the auction winner generates, exactly once</strong>. Every other
+                decision in the lifecycle — routing, gating, scoring, quorum, verification — is
+                pushed down a ladder of progressively cheaper mechanisms (§7).</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">Principle 3</span>
+                <h3>Failure is explicit</h3>
+                <p>Abstention, gas exhaustion, loop detection, TTL expiry, evidence drift and
+                ungrounded answers all terminate the negotiation as an <strong>RFO
+                (Request-Failure)</strong> packet backtracked to the origin, or as one of six named
+                convergence modes. A protocol that rejects answers must be able to show why
+                (REQ-NF-04): every query carries a retrievable audit trace.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">Principle 4</span>
+                <h3>Zero-state envelopes</h3>
+                <p>Nodes store zero session memory. The full negotiation state travels inside a
+                signed envelope with a unique nonce (<code>jti</code>) and a TTL, so any node can
+                verify authenticity and freshness independently; replay and forgery die at the
+                door. Crash, restart or migration loses nothing — the protocol is stateless by
+                construction, like JWT, the actor model and Interledger.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">Principle 5</span>
+                <h3>Structural termination</h3>
+                <p>Four rules make divergence impossible rather than merely unlikely: gas decreases
+                exactly once per hop; a node seeing itself in the path vector answers
+                <code>LOOP_DETECTED</code>; alignment distance must contract each clarify round
+                (d<sub>n+1</sub> ≤ γ·d<sub>n</sub>); quorum votes over the same top chunk hash
+                collapse to one. Worst case is G + C + R rounds — 6 in the edge profile — and the
+                bound is a theorem about the state machine, not a hope about the network.</p>
+            </div>
+            <div class="card">
+                <span class="feature-tag">Principle 6</span>
+                <h3>Honest cryptography posture</h3>
+                <p>Development runs on HMAC-SHA256 over a canonical serialisation, labelled
+                <code>DEV-SIGNER</code> everywhere it appears; production SHALL use Ed25519 (RFC
+                8032) signatures and TLS (REQ-S-01). Deploying the dev signer beyond a laboratory
+                LAN is defined as a <em>specification violation, not a configuration</em>. The same
+                honesty applies to every modelled-but-unmeasured number in the cost ledger (§8).</p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>3 · System Model</h2>
+        <h3>3.1 Node classes</h3>
+        <p>Nodes declare one of three classes at discovery time. The class is what makes thin
+        devices useful: they announce, relay and pre-bid without ever paying for a generation.</p>
+        <table class="table">
+            <tr><th>Class</th><th>Decision rungs</th><th>May generate?</th><th>Typical device</th></tr>
+            <tr><td><strong>N1</strong> thin origin</td><td>D0–D1 (ask, verify)</td><td>never</td><td>phone app, bot client</td></tr>
+            <tr><td><strong>N2</strong> full responder</td><td>D0–D3</td><td>yes, budgeted</td><td>bot host, tablet</td></tr>
+            <tr><td><strong>N3</strong> provider-backed</td><td>D0–D3 delegated</td><td>yes, remote</td><td>gateway to an LLM service</td></tr>
+        </table>
+        <h3>3.2 Privacy tiers</h3>
+        <p>The origin stamps each query with a stakes tier that sizes the consensus to the
+        question:</p>
+        <table class="table">
+            <tr><th>Tier</th><th>Use case</th><th>k / q</th><th>Remote provider</th><th>Error bound (p = 10 %)</th></tr>
+            <tr><td><strong>T0</strong></td><td>casual lookup</td><td>1 / 1</td><td>explicit candidate only</td><td>p, but 100 % entailment-checked</td></tr>
+            <tr><td><strong>T1</strong></td><td>default</td><td>2 / 2</td><td>allowed</td><td>p² = 1 %, distinct chunk hashes</td></tr>
+            <tr><td><strong>T2</strong></td><td>sensitive</td><td>3 / 2</td><td class="badge-bad">never, default deny (REQ-NF-02)</td><td>≈ 2.8 %, full audit</td></tr>
+        </table>
+        <p>T0 exists so that a swarm of one is still usable: the single bid is verified exactly as
+        in a larger quorum, and honest abstention is reported when the lone responder cannot ground
+        an answer.</p>
+        <h3>3.3 The negotiation actors</h3>
+        <div class="code-block">origin (N1)                responder (N2/N3)
+    |                             |
+    |--- PROPOSE (query) ------->|   pre-bid gate, no generation
+    |&lt;-- BID (offer, prov.) -----|
+    |--- ALIGN (lock-in) ------->|   contract distance declared
+    |&lt;-- ALIGN (confirmation) ---|
+    |--- RESOLVE (award) ------->|   single generation, budget charged
+    |&lt;-- RESOLVE (answer+prov.)--|
+    |  verify groundedness (L2)  |</div>
+    </section>
+
+    <section>
+        <h2>4 · Protocol Mechanics</h2>
+        <h3>4.1 Packets and sealing</h3>
+        <p>A packet is a JSON object carrying profile version, action
+        (<code>PROPOSE · BID · ALIGN · RESOLVE · GET_CHUNK · RFO · ACK</code>), origin and query
+        identifiers, sender, remaining <code>gas</code>, a path-vector <code>trail</code>, sealing
+        time, TTL (<code>exp_s</code>, default 60 s), the <code>jti</code> nonce, and an
+        action-specific payload. Sealing adds a signature over the <strong>canonical
+        serialisation</strong> of the packet — keys sorted, every non-ASCII code unit escaped, and
+        numbers emitted under a strict rule (the <em>pyDouble</em> rule: scientific notation only
+        outside [1e-4, 1e16), two-digit signed exponents, <code>-0.0</code> preserved,
+        integer-valued floats carry <code>.0</code>). The rule is golden-tested across Python,
+        Kotlin and JavaScript: a signature computed in one language verifies in all others. Replay
+        is handled by caching <code>jti</code> values for the TTL window and silently dropping
+        duplicates; expiry answers an RFO with reason <code>expired</code> — packets die of old
+        age, not only of gas.</p>
+        <h3>4.2 The lifecycle</h3>
+        <ul>
+            <li><strong>PROPOSE</strong> — the origin selects up to k candidates from its discovery
+            directory or peer table (capability-aware: N2/N3 first, N1 as relays and pre-bidders),
+            seals one packet each, sets gas = G.</li>
+            <li><strong>BID — pre-bid gate (firewall layer 1).</strong> A responder decides whether
+            to bid <em>without generating</em>: it scores retrieval-side competence (§6.1) and
+            abstains — RFO, <code>NO_QUORUM</code> — when the score falls below
+            <code>bid_min</code> (default 0.15) or it holds no chunk at all. The bid carries
+            <code>bid = 0.5·retrieval + 0.3·reputation + 0.2·top-chunk</code>, node class,
+            generation capability and chunk provenance <em>hashes, not text</em>.</li>
+            <li><strong>ALIGN — lock-in.</strong> With C = 1 (edge profile) the origin aligns once
+            with the winner; drift above <code>align_tolerance</code> (0.05) aborts
+            <code>MISMATCH</code>. With C &gt; 1 (full profile) the tolerance contracts by
+            γ = 0.95 per round. Each mapping entry must carry evidence — both concept IRIs plus
+            definitional snippets — and is validated before acceptance (§5.2).</li>
+            <li><strong>RESOLVE — the single generation.</strong> The winner charges its budget,
+            generates <em>only</em> inside the envelope (grounding instruction, the query, and
+            cited chunks as quoted data inside <code>&lt;evidence&gt;</code> tags with a
+            directive-stripper on chunk text, REQ-S-03), and returns the answer with cited chunks
+            (hash + text) as provenance. A winner that cannot generate returns an RFO; the origin
+            reports <code>NO_QUORUM</code> rather than accept an ungrounded answer.</li>
+            <li><strong>VERIFY — local entailment and reputation (layer 2/3).</strong> The origin
+            computes groundedness g over the <em>cited</em> chunks only. Success raises the
+            sender's reputation by 0.05; failure cuts it by 0.20 and terminates
+            <code>REJECTED</code>. <code>GET_CHUNK</code>/<code>ACK</code> let the origin pull any
+            cited chunk by hash — the only path by which chunk text travels on demand.</li>
+        </ul>
+        <h3>4.3 Convergence</h3>
+        <p>Negotiations end in exactly one of six modes — <code>RESOLVED</code>,
+        <code>REJECTED</code>, <code>MISMATCH</code>, <code>GAS_EXHAUSTED</code>,
+        <code>LOOP_DETECTED</code>, <code>NO_QUORUM</code> — within G + C + R rounds (6 in the edge
+        profile: G = 3, C = 1, R = 2). Failure is never silent: RFO packets backtrack along the
+        recorded trail, so the origin always learns the outcome within ≤ 2G hops.</p>
+    </section>
+
+    <section>
+        <h2>5 · The Hallucination Firewall</h2>
+        <p>Three independent layers, each cheap enough for edge hardware, each anchored in
+        current research. The firewall is complete only when all three run: layer 1 stops
+        incompetent responders before they cost anything; layer 2 stops ungrounded answers; layer
+        3 makes recidivism expensive.</p>
+        <h3>5.1 Layer 1 — pre-bid competence (responder, zero generation)</h3>
+        <p>The full profile samples the responder k times, clusters samples by bidirectional
+        entailment and computes <strong>semantic entropy</strong> over meaning clusters [R1] — a
+        high-entropy node exits the auction instead of poisoning it. On edge hardware the cheap
+        variant applies: a <strong>linear probe on hidden states</strong> predicts semantic entropy
+        in a single forward pass [R2], and the dev-embedder score is <em>query-side coverage</em>,
+        <code>|q ∩ c| / |q|</code> — symmetric Jaccard is unusable here because it collapses when
+        chunk ≫ query. Honest substitution, stated in the spec: cross-chunk NLI agreement
+        approximates, but does not equal, sampled semantic entropy; it can miss a model that
+        confabulates consistently with its retrieved chunks.</p>
+        <h3>5.2 Layer 2 — origin-side groundedness (per answer)</h3>
+        <p>The origin verifies the answer against the cited chunks only. The dev verifier is
+        lexical (fraction of answer tokens present in the evidence, threshold 0.35); the committed
+        production path is a small NLI cross-encoder (DeBERTa-v3-xsmall class, ~70 M, int8) with
+        threshold 0.8 [R5]. Output of any provider — remote or local — is untrusted data. This is
+        the containment that actually bounds hallucination risk when calibration cannot be trusted
+        [R6][R15][R16].</p>
+        <h3>5.3 Layer 3 — reputation and statistical audit</h3>
+        <p>An EWMA per sender enters the bid formula, so unreliable responders are progressively
+        not selected. Above warm reputation, audit intensity scales down (unknown nodes verified
+        100 %, warm 25 %, trusted every 8th query with mandatory spot audits), and realised
+        groundedness is audited against each node's promised conformal coverage [R3] with a
+        sequential probability ratio test — systematic over-bidding shows up statistically before
+        it shows up as bad answers, and a single audit failure resets the node to 100 %
+        verification. The spec states the trade plainly: audit sampling exchanges a per-message
+        guarantee for a statistical one, deliberately, for energy.</p>
+    </section>
+
+    <section>
+        <h2>6 · Routing and Discovery</h2>
+        <h3>6.1 Centroid routing</h3>
+        <p>No node broadcasts. Each node advertises a codebook of its top-K RAG centroids,
+        quantised to 48 B per centroid (384-d float32 → int8 → binary, asymmetric scoring [A8]),
+        so routing tables stay tiny on edge hardware. The origin matches a 384-bit query code
+        against cached codebooks and proposes to the best-matching candidates only — the
+        centroid-similarity pattern now validated for zero-shot task routing [R13][R11] and for
+        low-latency gating on frozen embedding backbones [R12]. Recent work pushes the same idea
+        further: tool-embedding interpolation toward the centroid of queries where a tool succeeds
+        [R14], and live nearest-centroid event routing for agentic systems [R19]. Verified outcomes
+        drift each advertised centroid toward the query regions where the node actually delivered —
+        codebooks are learned from delivery, not declared.</p>
+        <h3>6.2 Lease-based directory with TOFU</h3>
+        <p>A directory provides register / renew / expire / lookup; a record carries node id, key
+        bundle, endpoints, transports, class, topic codebook and a lease TTL (default 900 s).
+        Registration <strong>pins the first key bundle seen per node</strong> (Trust On First
+        Use); a changed bundle is rejected until an explicit re-pin. Announcements carry their own
+        <code>jti</code> with the same replay protection as protocol packets. Expired leases
+        disappear from lookup: a departed node vanishes rather than lying about availability.</p>
+        <h3>6.3 Transports: hub and mesh</h3>
+        <p>Two bindings share one transport seam (<code>send / join / peers</code> — three
+        functions, no core changes needed for new transports). In <strong>hub mode</strong> a
+        WhatsApp group is a topic-scoped channel: its description carries the topic centroid
+        (48 B), one PROPOSE reaches every member in one message, routing collapses to channel
+        selection, and loops are topologically impossible. Messages are two human-readable lines
+        plus an ASCII-safe base64url blob (deterministic CBOR + COSE [A1][A2], ≤ 1.8 KB); chat-speed
+        timers (bid window 10 min, exponential backoff, bounded retries) respect store-and-forward
+        semantics and platform rate tiers [A6]. Transport encryption is not authenticity: Ed25519
+        signatures remain the source of truth, sensitive topics should enable payload encryption
+        and assume topic names leak. In <strong>mesh mode</strong> (LAN / Bluetooth) nodes connect
+        directly and run the full profile rules; hub and mesh interoperate, and a query that finds
+        no quorum in its channel may be re-proposed on mesh before threshold decay.</p>
+    </section>
+
+    <section>
+        <h2>7 · The Decision Ladder — Edge Economics</h2>
+        <p>Most protocol decisions do not need a language model at all. OSP classifies every
+        decision onto a four-rung ladder and enforces one rule: <em>a decision MUST use the lowest
+        rung that suffices</em>.</p>
+        <table class="table">
+            <tr><th>Rung</th><th>Mechanism</th><th>Cost (mid-range phone)</th><th>OSP decisions</th></tr>
+            <tr><td><strong>D0</strong></td><td>vector math: Hamming (popcount) / cosine over binary-quantised embeddings</td><td>~µs, no model loaded</td><td>routing, centroid match, quorum aggregation, similarity scoring</td></tr>
+            <tr><td><strong>D1</strong></td><td>linear probes (SEP head [R2]) over embedder hidden states, calibration tables [R3][R15]</td><td>~0.1 ms</td><td>bid gating (hallucination-risk pre-screen), conformal lookup</td></tr>
+            <tr><td><strong>D2</strong></td><td>small cross-encoder NLI (~70 M, int8) [R5]</td><td>~10–30 ms / pair</td><td>chunk-agreement gate, payload entailment (VERIFY), audit</td></tr>
+            <tr><td><strong>D3</strong></td><td>the SLM itself (0.5–1.5 B, 4-bit) [A4][A5]</td><td>5–12 s / 200 tokens</td><td>only: ontology mapping on cache miss, and the winner's answer</td></tr>
+        </table>
+        <p>1-bit packing makes the D0 store feasible: 384-d float32 = 1536 B → int8 = 384 B →
+        binary = 48 B (+ fp32 scale); 1 M chunks ≈ 48 MB of vectors plus text, with the query side
+        kept float for asymmetric scoring [A8]. Every D3 call is charged to a daily budget (default
+        50 generations/day); an exhausted responder still routes and pre-bids but abstains from
+        RESOLVE, and a battery-saver node degrades to D0/D1-only participation — routing and
+        pre-bidding stay alive while generation stops. Ontology mapping is LRU-cached per
+        (peer, concept-pair) with a 7-day TTL and validated evidence [R9][R10]; D3 runs only on a
+        cache miss.</p>
+        <h3>7.1 Cost ledger (modelled — to be measured on target hardware)</h3>
+        <table class="table">
+            <tr><th>Resource / query at T1</th><th>Full (v0.4)</th><th>Lite (v0.5)</th></tr>
+            <tr><td>SLM generations</td><td>~6</td><td><span class="badge-ok">1</span></td></tr>
+            <tr><td>Wire bytes</td><td>~4.5 KB (JSON + JWS)</td><td><span class="badge-ok">~1.4 KB (CBOR + COSE, budget 1.8 KB)</span></td></tr>
+            <tr><td>Non-generative inference</td><td>1 embed + NLI</td><td>1 embed + SEP + ≤ 3 NLI pairs</td></tr>
+            <tr><td>End-to-end (mesh fast path)</td><td>~45 s</td><td>~15 s (one generation dominates)</td></tr>
+            <tr><td>RAG vector store / 1 M chunks</td><td>384 MB (int8)</td><td>48 MB (binary)</td></tr>
+            <tr><td>Battery-saver mode</td><td>node offline</td><td><span class="badge-ok">still routes &amp; pre-bids</span></td></tr>
+        </table>
+        <p class="keywords">The spec's own honesty rule applies: every number above is modelled,
+        not measured, until the hardware benchmark (test layer L6) runs.</p>
+    </section>
+
+    <section>
+        <h2>8 · Implementations and Interoperability</h2>
+        <p>Three implementations of one wire format exist and interoperate — the interoperability
+        claim is executable, not aspirational:</p>
+        <table class="table">
+            <tr><th>Surface</th><th>Language</th><th>Scope</th><th>Conformance suite</th></tr>
+            <tr><td>MCP server + CLI</td><td>Python 3, stdlib only (REQ-NF-01)</td><td>protocol core, discovery, provider bindings, MCP stdio surface (JSON-RPC 2.0)</td><td><span class="badge-ok">36/36</span> offline, deterministic, zero network</td></tr>
+            <tr><td>Android library + app</td><td>Kotlin, zero-dependency</td><td>osp-lite core + ospbridge foreground service (AIDL + HTTP + OSP-over-HTTP)</td><td><span class="badge-ok">38/38</span> JVM tests incl. cross-language vectors</td></tr>
+            <tr><td>whatsapp-bot peer</td><td>JavaScript (ESM)</td><td>osp/core.mjs + peer.mjs, /osp/packet and /osp/query endpoints</td><td><span class="badge-ok">13/13</span> wire parity with Python</td></tr>
+        </table>
+        <p>87 tests total, all offline (REQ-NF-03: the whole Python suite runs in ~0.05 s with no
+        pip installs and no network). Cross-language golden vectors pin the canonical serialisation,
+        the <em>pyDouble</em> number rule, sealing and verification parity. Requirements are written
+        <em>before</em> implementation and every mechanism traces to a numbered requirement and a
+        proving test (16 requirements, 15 testable — traceability matrix in [4]).</p>
+    </section>
+
+    <section>
+        <h2>9 · Field Validation</h2>
+        <p>A live chain has been exercised end-to-end on real hardware, across all three
+        implementations:</p>
+        <div class="code-block">Android tablet (Kotlin N1 origin, sealed packets, per-peer link secrets)
+  → socat relay on the LAN
+  → whatsapp-bot (JavaScript N2 responder, chroma vector retrieval)
+  → ollama gemma4:12b generator (local network, separate host)</div>
+        <table class="table">
+            <tr><th>Scenario</th><th>Outcome</th><th>Detail</th></tr>
+            <tr><td>Corpus summary (magazine documents, T0, single responder)</td><td class="badge-ok">RESOLVED</td><td>PROPOSE → BID 0.786 → ALIGN → RESOLVED; groundedness ≈ 0.80; ~30 s round trip</td></tr>
+            <tr><td>Post-reset repeat of the same query (fresh identity, re-pinned peer)</td><td class="badge-ok">RESOLVED</td><td>groundedness 0.654</td></tr>
+            <tr><td>Summary + factual query over a received image mail (no clean text layer)</td><td class="badge-ok">RESOLVED</td><td>groundedness 0.62–0.83 across runs — accepted only because cited evidence actually contained the content</td></tr>
+            <tr><td>Text-less video attachment (no extractable evidence)</td><td class="badge-bad">REJECTED</td><td>groundedness 0.00 — firewall layer 2 refuses an answer with no evidence to ground it</td></tr>
+            <tr><td>Same queries replayed through the Python CLI against the same responder</td><td class="badge-ok">byte-identical negotiations</td><td>cross-language wire parity confirmed outside the test suite</td></tr>
+        </table>
+        <p>Two operational lessons matter as much as the green rows. First, the negative result:
+        the REJECTED outcome is the protocol working as designed — an ungrounded answer was
+        produced by the generator and <em>stopped at the origin</em>, which is exactly the failure
+        mode calibration-only systems cannot catch [R6][R16]. Second, the honest-abstention path:
+        a query whose indexed evidence cannot support it (« third article », where the corpus has
+        no article numbering) returns <code>INSUFFICIENT_EVIDENCE</code>/<code>NO_QUORUM</code>
+        behaviour rather than a confident hallucination of an article that does not exist.</p>
+    </section>
+
+    <section>
+        <h2>10 · Security Analysis</h2>
+        <ul>
+            <li><strong>Cryptography posture.</strong> HMAC-SHA256 and cleartext HTTP are
+            development postures, labelled as such everywhere they appear; production SHALL use
+            Ed25519 (RFC 8032) via COSE/JWS [A2][A9] over TLS. The label is asserted in code and
+            tests, and the deviation is the single explicitly-justified exception to the
+            zero-dependency rule.</li>
+            <li><strong>Packet integrity and freshness.</strong> Signatures over canonical bytes;
+            <code>jti</code> replay cache per TTL; expiry answered with an RFO; gas monotonicity
+            and path-vector loops make flooding and bounce attacks structurally bounded.</li>
+            <li><strong>Prompt injection.</strong> Evidence is quoted data inside
+            <code>&lt;evidence&gt;</code> tags with an explicit "data, not instructions" clause and
+            a directive-stripper on chunk text (REQ-S-03). The spec calls this hygiene, not
+            defence: the actual containment is origin-side verification — output of any provider is
+            only ever verified, never executed. An adversarial confabulating provider stub proves
+            the property: it wins the auction and is still REJECTED, with reputation decay
+            (REQ-F-02).</li>
+            <li><strong>Privacy.</strong> T2 traffic never reaches remote providers by default;
+            chunks travel only when cited or explicitly fetched; the responder's corpus never
+            leaves the node; link secrets authenticate HTTP peering but never sign packets. The
+            Android bridge collects nothing and shares nothing — its data-safety declaration is
+            empty by construction.</li>
+            <li><strong>Known attack surface, stated.</strong> Byzantine RFO suppression cannot be
+            fully prevented on hostile paths (fallback: origin's bounded local timeout);
+            key continuity is TOFU, so a directory compromise between pin and re-pin is a
+            substitution window; conformal guarantees assume exchangeability [R3] — distribution
+            shift weakens the bound silently; and the independence assumption behind the quorum
+            error bounds degrades when nodes share corrupted sources beyond what the
+            provenance-diversity rule detects.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>11 · Related Work</h2>
+        <h3>11.1 Confidence calibration and hallucination detection</h3>
+        <p>Semantic entropy over meaning clusters detects confabulations that token-level
+        agreement misses [R1]; semantic entropy probes make the signal cheap enough for edge
+        hardware [R2]; SelfCheckGPT provides a zero-resource black-box alternative [R5]. Verbalised
+        confidence helps at RLHF scale [R4] but is unreliable on 0.5 B models — the edge profile
+        drops it deliberately. The survey literature consolidates the taxonomy: confidence
+        estimation and calibration methods for LLMs [R15], and uncertainty quantification with
+        risk mitigation and selective prediction [R6]. Most directly relevant to OSP's design
+        stance, Kalai et al. [R16] argue hallucination is incentivised by training and evaluation
+        that reward guessing over abstention — the protocol answer is to make abstention a
+        first-class, rewarded outcome (honest RFO) and guessing an expensive, audited one.
+        Conformal language modelling [R3] supplies the distribution-free coverage guarantees each
+        bid carries.</p>
+        <h3>11.2 Ontology matching (the ALIGN step)</h3>
+        <p>The OAEI campaigns document the hybrid pattern OSP follows: embedding prefiltering to
+        propose candidate correspondences, then an LLM pass to refine and justify each one
+        [R7][R8]. LLMs are known to hallucinate plausible-but-wrong correspondences in
+        domain-specific matching — the OAEI-LLM benchmark quantifies it [R9] — so every OSP
+        mapping entry must carry evidence (both concept IRIs plus definitional snippets) and is
+        validated against the local knowledge graph before acceptance [R10]. Current work
+        confirms both halves of the pattern: LLMs as oracles with validation-based selection reach
+        top ranks in OAEI 2025 [R17], and restricting LLM calls to borderline cases identified by
+        semantic similarity keeps accuracy while containing cost and error [R18] — exactly
+        OSP's cache-first, D3-on-miss policy.</p>
+        <h3>11.3 Centroid and semantic routing</h3>
+        <p>Embedding-based routing without LLM calls [R11], low-latency gating on frozen embedding
+        backbones [R12], and supervised centroid-similarity routing for task selection [R13]
+        establish that a codebook of centroids is a sufficient routing structure at millisecond
+        cost. Outcome-aware interpolation of tool embeddings toward the centroid of successful
+        queries [R14] parallels OSP's delivery-driven centroid drift, and nearest-centroid routing
+        of events for agentic systems [R19] matches OSP's hub-mode channel selection. OSP's
+        contribution is to move this routing structure into a peer-to-peer, adversarial setting
+        where the routed entities are untrusted knowledge holders rather than local tools.</p>
+    </section>
+
+    <section>
+        <h2>12 · Limitations</h2>
+        <ul>
+            <li><strong>Independence is an assumption.</strong> The quorum error bounds degrade if
+            nodes share corrupted sources beyond what provenance diversity detects (two wrong
+            manuals that agree with each other).</li>
+            <li><strong>The semantic-entropy gate is a proxy</strong> in the edge profile:
+            retrieval-side agreement can miss a model that confabulates consistently with its
+            retrieved chunks; the full gate needs sampled generations and bigger models.</li>
+            <li><strong>Audit sampling</strong> trades per-message guarantees for statistical
+            bounds — an economy, stated as such, with a hard reset on any audit failure.</li>
+            <li><strong>Centroid staleness:</strong> advertised codebooks lag RAG updates; routing
+            recall degrades gracefully, not instantly.</li>
+            <li><strong>Calibration drift:</strong> bid weights and thresholds need periodic
+            re-validation on real traffic or the firewall slowly goes soft [R6]; conformal bounds
+            assume exchangeability [R3].</li>
+            <li><strong>All cost numbers are modelled until L6</strong> runs on target hardware;
+            the spec refuses to present estimates as measurements.</li>
+            <li><strong>Dev transports:</strong> cleartext HTTP and the HMAC dev signer confine
+            current deployments to laboratory LANs by specification, not by convention.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>13 · Conclusion and Future Work</h2>
+        <p>OSP demonstrates that the verification burden of small-model knowledge exchange can be
+        carried by protocol structure instead of model introspection: a stateless signed envelope,
+        a generation-free bid gate, an origin-side groundedness check and a reputation economy
+        together give sub-2 B models a way to share knowledge that fails loud instead of wrong.
+        The design is fully specified, implemented three times in three languages, pinned by 87
+        conformance tests and validated live across a three-language chain — including the
+        rejection path that most RAG systems quietly lack.</p>
+        <p>Next steps, in specification order: the Ed25519 + TLS production signer (REQ-S-01, the
+        one dependency worth making); a real NLI verifier behind the existing D2 interface (ONNX
+        int8 cross-encoder); L5 property/fuzz testing of the termination invariant over random
+        seeded topologies; transport adapters (WhatsApp hub, BLE mesh) behind the existing
+        three-function seam, unlocking the L6 hardware benchmark that converts the modelled cost
+        ledger into measurements.</p>
+    </section>
+
+    <section>
+        <h2>References</h2>
+        <p class="keywords">[R1]–[R14] are shared with the full profile [1]; [R15]–[R19] are
+        introduced by this paper. Annex references [A1]–[A9] cover formats, runtimes and platform
+        constraints shared with the edge profile [2].</p>
+        <div class="refs">
+            <h3>Confidence calibration &amp; hallucination</h3>
+            <ul>
+                <li><span class="refkey">[R1]</span> Farquhar, Kossen, Kuhn &amp; Gal — <em>Detecting hallucinations in large language models using semantic entropy</em>, Nature 630 (2024). <a href="https://www.nature.com/articles/s41586-024-07421-0">nature.com</a></li>
+                <li><span class="refkey">[R2]</span> Kossen et al. — <em>Semantic Entropy Probes: Robust and Cheap Hallucination Detection in LLMs</em> (2024). <a href="https://arxiv.org/abs/2406.15927">arXiv:2406.15927</a></li>
+                <li><span class="refkey">[R3]</span> Quach et al. — <em>Conformal Language Modeling</em>, ICLR 2024. <a href="https://arxiv.org/abs/2306.10193">arXiv:2306.10193</a></li>
+                <li><span class="refkey">[R4]</span> Tian et al. — <em>Just Ask for Calibration</em>, EMNLP 2023. <a href="https://aclanthology.org/2023.emnlp-main.330/">aclanthology.org</a></li>
+                <li><span class="refkey">[R5]</span> Manakul, Liusie &amp; Gales — <em>SelfCheckGPT: Zero-Resource Black-Box Hallucination Detection</em>, EMNLP 2023. <a href="https://arxiv.org/abs/2303.08896">arXiv:2303.08896</a></li>
+                <li><span class="refkey">[R6]</span> Liu et al. — <em>Uncertainty Quantification and Confidence Calibration in Large Language Models: A Survey</em>, ACM TOIS (2025). <a href="https://arxiv.org/abs/2503.15850">arXiv:2503.15850</a></li>
+                <li><span class="refkey">[R15]</span> Geng et al. — <em>A Survey of Confidence Estimation and Calibration in Large Language Models</em>, NAACL 2024. <a href="https://arxiv.org/abs/2311.08298">arXiv:2311.08298</a></li>
+                <li><span class="refkey">[R16]</span> Kalai, Nachum, Vempala &amp; Zhang — <em>Why Language Models Hallucinate</em> (2025). <a href="https://arxiv.org/abs/2509.04664">arXiv:2509.04664</a></li>
+            </ul>
+            <h3>Ontology matching (the ALIGN step)</h3>
+            <ul>
+                <li><span class="refkey">[R7]</span> — <em>Results of the Ontology Alignment Evaluation Initiative 2024</em>, OM Workshop (2024). <a href="https://openaccess.city.ac.uk/id/eprint/34615/">openaccess.city.ac.uk</a></li>
+                <li><span class="refkey">[R8]</span> — <em>Results of CMatch in OAEI 2025</em>, OM Workshop (2025). <a href="https://ceur-ws.org/Vol-4144/om2025-oaei-paper3.pdf">ceur-ws.org</a></li>
+                <li><span class="refkey">[R9]</span> — <em>OAEI-LLM: A Benchmark Dataset for Understanding LLM Hallucinations in Ontology Matching</em> (2024). <a href="https://arxiv.org/abs/2409.14038">arXiv:2409.14038</a></li>
+                <li><span class="refkey">[R10]</span> — <em>Ontology Alignment Validation using LLM and KG</em>, OM Workshop (2025). <a href="https://ceur-ws.org/Vol-4144/om2025-STpaper3.pdf">ceur-ws.org</a></li>
+                <li><span class="refkey">[R17]</span> Lushnei et al. — <em>Large Language Models as Oracles for Ontology Alignment</em>, EACL 2026. <a href="https://aclanthology.org/2026.eacl-long.110/">aclanthology.org</a> · <a href="https://arxiv.org/abs/2508.08500">arXiv:2508.08500</a></li>
+                <li><span class="refkey">[R18]</span> Taboada et al. — <em>Ontology Matching with Large Language Models and Semantic Similarity</em>, Information Fusion (2025). <a href="https://www.sciencedirect.com/science/article/pii/S1566253525003276">sciencedirect.com</a></li>
+            </ul>
+            <h3>Centroid &amp; semantic routing</h3>
+            <ul>
+                <li><span class="refkey">[R11]</span> Aurelio AI — <em>semantic-router: embedding-based routing without LLM calls</em> (2024). <a href="https://github.com/aurelio-labs/semantic-router">github.com</a></li>
+                <li><span class="refkey">[R12]</span> Ratnakar — <em>LatentGate: Low-Latency Semantic Routing via Frozen Embeddings</em>, ACL Industry Track (2026). <a href="https://aclanthology.org/2026.acl-industry.153.pdf">aclanthology.org</a></li>
+                <li><span class="refkey">[R13]</span> — <em>A supervised post-hoc routing framework for task-specific routing (Centroid Similarity Routing)</em>, Neurocomputing (2026). <a href="https://www.sciencedirect.com/science/article/pii/S0925231226019648">sciencedirect.com</a></li>
+                <li><span class="refkey">[R14]</span> Chen — <em>Outcome-Aware Tool Selection for Semantic Routers</em> (2026). <a href="https://arxiv.org/abs/2603.13426">arXiv:2603.13426</a></li>
+                <li><span class="refkey">[R19]</span> Lovén — <em>Neural Router: Semantic Content Matching for Agentic AI</em> (2026). <a href="https://arxiv.org/abs/2605.25701">arXiv:2605.25701</a></li>
+            </ul>
+            <h3>Formats, runtimes, platform constraints</h3>
+            <ul>
+                <li><span class="refkey">[A1]</span> — <em>Concise Binary Object Representation (CBOR)</em>, RFC 8949. <a href="https://www.rfc-editor.org/rfc/rfc8949">rfc-editor.org</a></li>
+                <li><span class="refkey">[A2]</span> — <em>CBOR Object Signing and Encryption (COSE)</em>, RFC 9052/9053. <a href="https://www.rfc-editor.org/rfc/rfc9052">rfc-editor.org</a></li>
+                <li><span class="refkey">[A3]</span> Reimers &amp; Gurevych — <em>Sentence-BERT</em> (MiniLM-L6 class, 384-d embedder), EMNLP 2019. <a href="https://arxiv.org/abs/1908.10084">arXiv:1908.10084</a></li>
+                <li><span class="refkey">[A4]</span> — <em>llama.cpp: GGUF/Q4 inference on consumer hardware</em>. <a href="https://github.com/ggml-org/llama.cpp">github.com</a></li>
+                <li><span class="refkey">[A5]</span> — <em>MediaPipe LLM Inference API</em> (Android on-device LLM). <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/llm_inference">ai.google.dev</a></li>
+                <li><span class="refkey">[A6]</span> Meta — <em>WhatsApp Business Cloud API: messaging &amp; rate limits</em>. <a href="https://developers.facebook.com/docs/whatsapp/cloud-api">developers.facebook.com</a></li>
+                <li><span class="refkey">[A7]</span> Android — <em>Background execution limits / Doze / WorkManager constraints</em>. <a href="https://developer.android.com/develop/background-work/background-tasks">developer.android.com</a></li>
+                <li><span class="refkey">[A8]</span> Jégou et al. — <em>Hamming Embedding / Product Quantization</em> (asymmetric binary scoring), IEEE TPAMI 2011. <a href="https://hal.inria.fr/inria-00514462">hal.inria.fr</a></li>
+                <li><span class="refkey">[A9]</span> — <em>Edwards-Curve Digital Signature Algorithm (EdDSA)</em>, RFC 8032. <a href="https://www.rfc-editor.org/rfc/rfc8032">rfc-editor.org</a></li>
+            </ul>
+        </div>
+    </section>
+
+    </main>
+
+    <footer>
+        The Omni-Swarm Protocol — technical paper · OSP v0.6 "Connect" · informative companion to the
+        specification set ·
+        <a href="omni_swarm_protocol.html">v0.4 full</a> ·
+        <a href="osp_lite_v05.html">v0.5 Lite</a> ·
+        <a href="requirements_v06.html">v0.6 requirements</a> ·
+        <a href="osp_connect_v06.html">v0.6 architecture &amp; test plan</a> ·
+        <a href="README.md">README (ETSI-style spec)</a>
+    </footer>
+</div>
+
+</body>
+</html>
