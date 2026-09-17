@@ -397,7 +397,7 @@ class Node:
         for node_id in candidates:
             pkt = Packet(
                 action=Action.PROPOSE, origin_id=self.id, query_id=uuid.uuid4().hex[:12],
-                sender=self.id, gas=self.cfg.gas, payload={"query_vec": list(qv)},
+                sender=self.id, gas=self.cfg.gas, payload={"query_vec": list(qv), "query_text": text},
             ).seal(self.signer)
             trace.append({"to": node_id, "action": "PROPOSE"})
             reply = self.hub.send(self.id, node_id, pkt)

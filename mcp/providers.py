@@ -133,29 +133,100 @@ class OpenAICompatProvider(D3Provider):
         }
 
 
-class LLMProviderFileAdapter(D3Provider):
-    """Adapter for the future ../LLMprovider service (assumption flagged in
-    requirements_v06.html — the directory does not exist yet).
+def ensure_scheme(url: str) -> str:
+    """LAN addresses arrive bare (`192.168.1.194:11434`) — urllib needs http://."""
+    url = url.rstrip("/")
+    return url if "://" in url else f"http://{url}"
 
-    Contract: when <llmprovider_dir>/osp_endpoint.json appears, it contains:
-      {"base_url": "http://...", "model": "...", "api_key_env": "NAME"}
-    Until then this provider reports unavailable and the node degrades to N1
-    behavior for generation (REQ-F-03/REQ-F-04 interplay)."""
+
+class OllamaProvider(OpenAICompatProvider):
+    """Ollama server (default port :11434) as a remote N3 provider.
+
+    Ollama exposes an OpenAI-compatible API under /v1 and native model listing
+    under /api/tags. The base URL is normalized so LAN addresses like
+    `192.168.1.194:11434` work as-is."""
+    name = "ollama"
+
+    def __init__(self, host_url: str, model: str = "", timeout_s: float = 120.0):
+        base = ensure_scheme(host_url)
+        if not base.endswith("/v1"):
+            base += "/v1"
+        super().__init__(base, model, "", timeout_s)
+        self.tags_url = base[: -len("/v1")] + "/api/tags"
+
+    def list_models(self) -> list[str]:
+        with urllib.request.urlopen(self.tags_url, timeout=self.timeout_s) as resp:
+            return [m["name"] for m in json.loads(resp.read()).get("models", [])]
+
+    def _resolve_model(self) -> str:
+        if self.model:
+            return self.model
+        try:
+            models = self.list_models()
+            self.model = models[0] if models else "fastmodel:latest"
+        except Exception:
+            self.model = "fastmodel:latest"   # offline → resolved lazily again
+        return self.model
+
+    def generate(self, query: str, chunks: list[dict]) -> dict:
+        self.model = self._resolve_model()
+        out = super().generate(query, chunks)
+        out["provider"] = f"ollama:{self.model}"
+        return out
+
+
+class LLMProviderFileAdapter(D3Provider):
+    """Adapter for the ../LLMprovider Android app (com.tree4five.gguf).
+
+    Reality check (verified against /home/pc/sby/LLMProvider source): the app
+    exposes `LLMInferenceService` as an Android *bound service* (binder AIDL:
+    generateTextStream / generateFromEmbeddings / embedding slots quantized as
+    [float32 scale][int8 × dim] — the same wire layout as OSP v0.5 vectors).
+    It has NO HTTP server, so it is reachable ONLY by apps on the same device
+    (i.e. harnessdroid on the phone), never from a PC over the network.
+
+    This adapter therefore reports an honest status and activates only if a
+    bridge publishes an osp_endpoint.json contract file:
+      {"base_url": "http://<phone-ip>:<port>/v1", "model": "...",
+       "api_key_env": "NAME"}"""
     name = "llmprovider-adapter"
-    DEFAULT_DIR = Path(__file__).resolve().parent.parent.parent / "LLMprovider"
+
+    @staticmethod
+    def candidate_dirs() -> list[Path]:
+        repo_root = Path(__file__).resolve().parent.parent  # .../swarmknowledge_protocol
+        home = repo_root.parent                              # /home/pc
+        return [home / "LLMprovider", home / "sby" / "LLMProvider"]
 
     def __init__(self, provider_dir: Path | None = None):
-        self.config_path = (provider_dir or self.DEFAULT_DIR) / "osp_endpoint.json"
+        self.dir = provider_dir
         self._inner: D3Provider | None = None
 
+    @property
+    def config_path(self) -> Path | None:
+        d = self.dir or next((p for p in self.candidate_dirs() if p.exists()), None)
+        return (d / "osp_endpoint.json") if d else None
+
     def _load(self) -> D3Provider | None:
-        if self._inner is None and self.config_path.exists():
-            cfg = json.loads(self.config_path.read_text())
+        path = self.config_path
+        if self._inner is None and path and path.exists():
+            cfg = json.loads(path.read_text())
             self._inner = OpenAICompatProvider(
                 cfg["base_url"], cfg["model"],
                 os.environ.get(cfg.get("api_key_env", ""), ""),
             )
         return self._inner
+
+    def status(self) -> dict:
+        path = self.config_path
+        found = [str(p) for p in self.candidate_dirs() if p.exists()]
+        if self._load() is not None:
+            return {"reachable": True, "via": str(path)}
+        return {
+            "reachable": False,
+            "dirs_seen": found,
+            "reason": "on-device AIDL service (no HTTP) — needs a same-device "
+                      "bridge app (harnessdroid) or an osp_endpoint.json contract",
+        }
 
     @property
     def remote(self) -> bool:
@@ -169,7 +240,9 @@ class LLMProviderFileAdapter(D3Provider):
         inner = self._load()
         if inner is None:
             raise RuntimeError(
-                f"LLMprovider not available: {self.config_path} not found")
+                f"LLMProvider not reachable: no osp_endpoint.json in "
+                f"{[str(p) for p in self.candidate_dirs()]}. The app is an "
+                f"on-device binder service; see status().")
         out = inner.generate(query, chunks)
         out["provider"] = f"llmprovider:{out['provider']}"
         return out
@@ -180,9 +253,15 @@ class LLMProviderFileAdapter(D3Provider):
 # ---------------------------------------------------------------------------
 
 def provider_from_env() -> D3Provider:
-    """Choose the D3 implementation from the environment (REQ-F-01: config-only switch)."""
+    """Choose the D3 implementation from the environment (REQ-F-01: config-only switch).
+
+    OSP_PROVIDER_URL pointing at an Ollama default port (:11434), or an explicit
+    OSP_PROVIDER_KIND=ollama, selects OllamaProvider automatically."""
     url = os.environ.get("OSP_PROVIDER_URL")
     if url:
+        kind = os.environ.get("OSP_PROVIDER_KIND", "").lower()
+        if kind == "ollama" or ":11434" in url:
+            return OllamaProvider(url, os.environ.get("OSP_PROVIDER_MODEL", ""))
         return OpenAICompatProvider(
             url,
             os.environ.get("OSP_PROVIDER_MODEL", "default"),
