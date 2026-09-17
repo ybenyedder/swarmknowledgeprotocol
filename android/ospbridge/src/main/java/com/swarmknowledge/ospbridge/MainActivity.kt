@@ -112,6 +112,73 @@ class MainActivity : AppCompatActivity() {
             }.start()
         }
 
+        // Forenseek menu: diagnostics dump, full reset, version — support tools
+        findViewById<MaterialButton>(R.id.btnLogAll).setOnClickListener {
+            val svc = OspService.instance
+            if (svc == null) {
+                out.text = "node not started — START NODE first"
+                return@setOnClickListener
+            }
+            Thread {
+                val dump = svc.dumpInfo()
+                val dir = getExternalFilesDir(null) ?: filesDir
+                var saved: String? = null
+                try {
+                    val f = java.io.File(dir, "forenseek_%d.txt".format(System.currentTimeMillis()))
+                    f.writeText(dump)
+                    saved = f.absolutePath
+                    dump.chunked(3000).forEachIndexed { i, part ->
+                        android.util.Log.i("forenseek", "[$i] $part")
+                    }
+                } catch (_: Exception) { }
+                handler.post {
+                    out.text = dump + (saved?.let { "\n— saved to $it" } ?: "")
+                }
+            }.start()
+        }
+
+        findViewById<MaterialButton>(R.id.btnResetAll).setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Reset all")
+                .setMessage(
+                    "Wipe the node identity, link secret, peers and taught " +
+                    "knowledge on this device? This cannot be undone."
+                )
+                .setPositiveButton("Reset") { _, _ ->
+                    OspService.instance?.resetAll()
+                    stopService(Intent(this, OspService::class.java))
+                    peerUrl.setText("")
+                    peerToken.setText("")
+                    peerFieldsRestored = false
+                    out.text = "reset done — identity, peers and knowledge cleared\n" +
+                        "START NODE provisions a fresh node"
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+        findViewById<MaterialButton>(R.id.btnVersion).setOnClickListener {
+            val pkg = packageManager.getPackageInfo(packageName, 0)
+            val vcode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode
+            else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+            val s = OspService.instance?.statusMap()
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.app_name))
+                .setMessage(
+                    "App      : v${pkg.versionName} ($vcode)\n" +
+                    "Protocol : OSP v${s?.get("packet_version") ?: "0.6"}\n" +
+                    "Node     : ${s?.get("node_id") ?: "(not started)"}" +
+                    (s?.get("node_class")?.let { " ($it)" } ?: "") + "\n" +
+                    "Engine   : " + when {
+                        s == null -> "—"
+                        s["llmprovider_bound"] == true -> "LLMProvider v${s["llmprovider_version"]}"
+                        else -> "LLMProvider not bound"
+                    }
+                )
+                .setPositiveButton("OK", null)
+                .show()
+        }
+
         // Peering straight from the UI: resolve the remote's node id from its
         // status endpoint, then merge it (url + link secret) into the persisted
         // peer table — no adb needed on a store install.

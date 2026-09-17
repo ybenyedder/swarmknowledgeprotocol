@@ -207,6 +207,60 @@ class OspService : Service() {
         """.trimIndent()
     }
 
+    // -- forenseek menu ----------------------------------------------------------------
+
+    /**
+     * Forenseek "Log all": complete diagnostic dump of this node. Link secrets
+     * (own + peers) are truncated to their 6-char prefix, so the dump is safe
+     * to read on screen, write to a file or share for support.
+     */
+    fun dumpInfo(): String {
+        val s = statusMap()
+        val pkg = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
+        val vcode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode
+        else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+        val peers = remotes.entries.joinToString("\n") { (id, p) ->
+            val tok = p.token?.let { it.take(6) + "…" } ?: "none"
+            "  $id · ${p.url} · token $tok"
+        }.ifEmpty { "  (none)" }
+        val chunks = rag.entries.mapIndexed { i, e ->
+            val t = e.text.replace("\n", " ")
+            "  [$i] " + if (t.length > 160) t.take(160) + "…" else t
+        }.joinToString("\n").ifEmpty { "  (none)" }
+        return buildString {
+            appendLine("== forenseek dump ==")
+            appendLine("app        : v${pkg.versionName} ($vcode, ${applicationContext.packageName})")
+            appendLine("protocol   : OSP v${s["packet_version"]}")
+            appendLine("node       : ${s["node_id"]} (${s["node_class"]}) · uptime ${s["uptime_s"]}s")
+            appendLine("HTTP       : port ${s["http_port"]} · link secret ${token.take(6)}…")
+            appendLine("LLMProvider: ${if (s["llmprovider_bound"] == true) "bound v${s["llmprovider_version"]}" else "not bound"}")
+            appendLine("embedding  : dim=${s["embedding_dim"]} context=${s["context_length"]}")
+            appendLine("budget     : ${s["budget_left"]} verified queries left today")
+            appendLine("last mode  : ${(lastOutcome?.get("mode")) ?: "(none yet)"}")
+            appendLine("peers (${remotes.size}):")
+            appendLine(peers)
+            appendLine("knowledge (${s["chunks"]} chunks):")
+            appendLine(chunks)
+        }
+    }
+
+    /**
+     * Forenseek "Reset all": wipe the node identity, link secret, peer table
+     * and taught knowledge. The caller stops the service right after — the
+     * next START NODE provisions a fresh node.
+     */
+    fun resetAll() {
+        http?.stop()
+        prefs.edit().clear().commit()
+        rag = RagStore(emptyList())
+        origin = null
+        responder = null
+        lastOutcome = null
+        startedAt = 0
+        httpPort = PORT_DEFAULT
+        originHub = null
+    }
+
     // -- AIDL surface (osp_lite_v05.html §5) ----------------------------------------
 
     private val binder = object : IOspService.Stub() {

@@ -14,4 +14,8 @@
     <string name="btn_stop">Stop</string>
     <string name="btn_query">Run verified query (T0)</string>
     <string name="btn_teach">Teach chunk</string>
+    <string name="card_forenseek">Forenseek</string>
+    <string name="btn_log_all">Log all</string>
+    <string name="btn_reset_all">Reset all</string>
+    <string name="btn_version">Version</string>
 </resources>

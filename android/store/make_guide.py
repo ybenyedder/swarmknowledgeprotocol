@@ -122,13 +122,14 @@ p.title("1 · Démarrez votre nœud", wrap_w=620)
 p.paras([
     ("Ouvrez Tree4Five OSP Bridge et touchez START NODE.", 26, True, TXT, 18),
     ("La carte « Node status » affiche l'état du nœud : son identité "
-     "(ici osp-d7a301d5, classe N2), le moteur IA local lié (LLMProvider "
-     "v1.1.4, embeddings dim=896), les connaissances locales (1 chunk) et le "
-     "budget du jour (50 requêtes vérifiées).", 24, False, TXT, 14),
+     "(ici osp-dbda549f, classe N2), le moteur IA local lié (LLMProvider "
+     "v1.1.4, embeddings dim=896), les connaissances locales (0 chunk au "
+     "départ — Teach a chunk les ajoute) et le budget du jour (50 requêtes "
+     "vérifiées).", 24, False, TXT, 14),
     ("La ligne HTTP montre le port d'écoute (8090) : c'est l'adresse que vos "
      "autres appareils utiliseront pour interroger CETTE tablette. Le secret "
      "de liaison n'est jamais affiché en clair — seulement ses premiers "
-     "caractères (0a68ca…).", 24, False, TXT, 14),
+     "caractères (79daa6…).", 24, False, TXT, 14),
     ("STOP arrête le nœud proprement.", 24, False, TXT_DIM, 0),
 ], x=MARGIN, w=600)
 p.shot(os.path.join(GUIDE, "step1_node_started.png"), 720, MARGIN + 10, 450)
@@ -163,14 +164,14 @@ p.paras([
     ("Touchez la puce « résume le magazine de robotique reçu » (ou tapez "
      "votre question), puis RUN VERIFIED QUERY (T0).", 24, False, TXT, 14),
     ("Derrière un seul toucher : un paquet scellé PROPOSE part vers le pair, "
-     "le pair répond BID avec la preuve qu'il détient (couverture 0.667), "
+     "le pair répond BID avec la preuve qu'il détient (couverture 0.65), "
      "génère la réponse DANS l'enveloppe de preuve (RESOLVE), et la tablette "
      "vérifie l'ancrage de la réponse avant de l'afficher.", 24, False, TXT, 14),
     ("Comptez 30 à 90 s : la génération a lieu sur le LLM du pair.", 22, False, TXT_DIM, 14),
-    ("Résultat : mode=RESOLVED, groundedness=0.64 — « Le magazine s'appelle "
-     "« PLANÈTE ROBOTS ». C'est une « Publication bimestrielle » dont le "
-     "titre complet est « INTELLIGENCE ARTIFICIELLE ET ROBOTIQUE ». Il est "
-     "édité par la « SARL Lexing Editions ». »", 24, False, CYAN, 0),
+    ("Résultat : mode=RESOLVED, groundedness=0.654 — « Le magazine s'appelle "
+     "« PLANÈTE ROBOTS », une « Publication bimestrielle » dont le titre "
+     "complet est « ÉDITO INTELLIGENCE ARTIFICIELLE ET ROBOTIQUE ». Il est "
+     "publié par la société « SARL Lexing Editions ». »", 24, False, CYAN, 0),
 ], x=MARGIN, w=600)
 p.shot(os.path.join(GUIDE, "step3_query_resolved.png"), 720, MARGIN + 10, 450)
 p.footer(4, 6)
@@ -223,7 +224,10 @@ p.paras([
     ("Bon à savoir", 28, True, CYAN, 12),
     ("• Les puces d'exemples remplissent le champ question en un toucher.", 23, False, TXT, 8),
     ("• Teach a chunk ajoute une connaissance locale : cette tablette saura "
-     "y répondre quand d'autres nœuds l'interrogeront.", 23, False, TXT, 0),
+     "y répondre quand d'autres nœuds l'interrogeront.", 23, False, TXT, 8),
+    ("• Le menu Forenseek rassemble les outils de diagnostic : LOG ALL exporte "
+     "un journal complet du nœud (secrets tronqués), VERSION affiche app et "
+     "protocole, RESET ALL efface identité, pairs et connaissances.", 23, False, TXT, 0),
 ])
 p.footer(6, 6)
 pages.append(p)

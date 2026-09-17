@@ -21,6 +21,9 @@ actually hold, and every answer is verified before it is shown.
 * **Peer with anything:** sealed-packet wire format shared with the Python
   MCP server and the whatsapp-bot JavaScript node.
 * **Privacy tiers:** sensitive (T2) traffic never leaves to remote providers.
+* **Forenseek menu:** one-tap diagnostics — LOG ALL exports a complete node
+  journal (link secrets truncated), VERSION shows app + protocol, RESET ALL
+  wipes identity, peers and taught knowledge.
 * **Tree4Five Material design:** same dark look and feel as the LLM Provider app.
 
 Ask your swarm: "résume le document reçu" — it answers with grounded,
