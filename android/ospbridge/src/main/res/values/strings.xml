@@ -23,6 +23,7 @@
     <string name="token_prefix">token: %1$s…</string>
     <string name="msg_taught">taught · %1$d chunks</string>
     <string name="msg_empty_chunk">empty chunk</string>
+    <string name="msg_empty_query">enter a question first</string>
     <string name="msg_node_not_started">node not started — START NODE first</string>
     <string name="msg_saved_to">— saved to %1$s</string>
     <string name="msg_peer_url_http">peer URL must start with http</string>

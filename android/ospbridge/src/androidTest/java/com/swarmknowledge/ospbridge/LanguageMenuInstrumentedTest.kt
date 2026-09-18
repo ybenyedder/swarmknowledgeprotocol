@@ -36,6 +36,11 @@ class LanguageMenuInstrumentedTest {
         device.executeShellCommand("input keyevent KEYCODE_WAKEUP")
         device.executeShellCommand("wm dismiss-keyguard")
         device.executeShellCommand("svc power stayon usb")
+        // A fresh install shows the POST_NOTIFICATIONS dialog, which covers the
+        // whole UI: grant it from the shell so the real menu is reachable.
+        device.executeShellCommand(
+            "pm grant com.tree4five.osp android.permission.POST_NOTIFICATIONS"
+        )
         // Driving the real menu needs an interactive screen: when the device
         // is dozing (mAwake=false), skip instead of reporting a false failure.
         org.junit.Assume.assumeTrue(
@@ -44,11 +49,18 @@ class LanguageMenuInstrumentedTest {
         )
     }
 
-    /** Waits for the app UI, then for the toolbar overflow button. */
-    private fun overflowButton(timeoutMs: Long = 10_000) =
-        device.wait(Until.hasObject(By.desc("More options")), timeoutMs)?.let {
-            device.findObject(By.desc("More options"))
-        } ?: device.findObject(By.desc("Plus d'options"))
+    /** Waits for the app UI, then for the toolbar overflow button.
+     *  The button's content description is appcompat-localized, so after a
+     *  switch to French it reads "Options supplémentaires" (One UI) or
+     *  "Plus d'options" (AOSP) — match any known label. */
+    private val overflowDesc = java.util.regex.Pattern.compile(
+        "More options|Plus d'options|Options supplémentaires"
+    )
+
+    private fun overflowButton(timeoutMs: Long = 10_000): androidx.test.uiautomator.UiObject2? {
+        device.wait(Until.hasObject(By.desc(overflowDesc)), timeoutMs)
+        return device.findObject(By.desc(overflowDesc))
+    }
 
     private fun tapText(text: String, timeoutMs: Long = 5_000): Boolean {
         device.wait(Until.hasObject(By.text(text)), timeoutMs) ?: return false

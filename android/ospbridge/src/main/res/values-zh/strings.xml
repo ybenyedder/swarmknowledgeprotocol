@@ -22,6 +22,7 @@
     <string name="token_prefix">令牌：%1$s…</string>
     <string name="msg_taught">已学习 · %1$d 个知识块</string>
     <string name="msg_empty_chunk">空知识块</string>
+    <string name="msg_empty_query">请先输入问题</string>
     <string name="msg_node_not_started">节点未启动 — 请先“启动节点”</string>
     <string name="msg_saved_to">— 已保存至 %1$s</string>
     <string name="msg_peer_url_http">对等节点 URL 必须以 http 开头</string>

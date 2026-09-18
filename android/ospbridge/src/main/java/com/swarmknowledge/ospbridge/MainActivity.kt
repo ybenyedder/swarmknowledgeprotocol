@@ -222,6 +222,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnQuery).setOnClickListener {
             val svc = OspService.instance ?: return@setOnClickListener
             val text = queryBox.text.toString()
+            // same fail-closed posture as the AIDL entry point: a blank query
+            // would still open a negotiation (with an empty payload on the wire)
+            if (text.isBlank()) {
+                out.text = getString(R.string.msg_empty_query)
+                return@setOnClickListener
+            }
             Thread {
                 val result = try {
                     val o = svc.submitQueryLocal(text, 0)

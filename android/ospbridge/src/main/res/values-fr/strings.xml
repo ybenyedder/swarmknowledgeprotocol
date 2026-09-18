@@ -22,6 +22,7 @@
     <string name="token_prefix">jeton : %1$s…</string>
     <string name="msg_taught">appris · %1$d chunks</string>
     <string name="msg_empty_chunk">chunk vide</string>
+    <string name="msg_empty_query">saisissez d\'abord une question</string>
     <string name="msg_node_not_started">nœud non démarré — DÉMARREZ LE NŒUD d\'abord</string>
     <string name="msg_saved_to">— enregistré dans %1$s</string>
     <string name="msg_peer_url_http">l\'URL du pair doit commencer par http</string>

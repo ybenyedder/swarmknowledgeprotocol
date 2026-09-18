@@ -22,6 +22,7 @@
     <string name="token_prefix">الرمز: %1$s…</string>
     <string name="msg_taught">تم التعليم · %1$d مقطعاً</string>
     <string name="msg_empty_chunk">مقطع فارغ</string>
+    <string name="msg_empty_query">أدخل سؤالاً أولاً</string>
     <string name="msg_node_not_started">العقدة غير مُشغَّلة — ابدأ العقدة أولاً</string>
     <string name="msg_saved_to">— حُفظ في %1$s</string>
     <string name="msg_peer_url_http">يجب أن يبدأ رابط العقدة النظيرة بـ http</string>
