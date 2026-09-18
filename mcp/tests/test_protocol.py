@@ -291,11 +291,12 @@ class TestQueryCover(unittest.TestCase):
     """
 
     GOLDEN = [
-        # (query, chunk, cover, jaccard) — jaccard shown to document the gap
+        # (query, chunk, cover, jaccard) — jaccard shown to document the gap;
+        # accented words stay on purpose, the tokenizer must survive non-ASCII
         ("x y", "x z w v u", 0.5, 0.167),
         ("bionics", "quantum pancake", 0.0, 0.0),
-        ("robot exosquelette", "<le robot humanoïde et l'exosquelette tactile>", 1.0, 0.286),
-        ("résumé document reçu", "résumé du document reçu hier", 1.0, 0.6),
+        ("café exoskeleton review", "<the café exoskeleton and its tactile review>", 1.0, 0.75),
+        ("résumé document received", "résumé of the document received yesterday", 1.0, 0.75),
     ]
 
     def test_query_cover_golden_values(self):
@@ -303,8 +304,8 @@ class TestQueryCover(unittest.TestCase):
             self.assertEqual(osp_core.query_cover(osp_core.embed(q), osp_core.embed(c)), cover)
 
     def test_retrieve_ranks_by_query_cover(self):
-        rag = RagStore(["<le robot humanoïde et l'exosquelette tactile>", "quantum pancake"])
-        hits = rag.retrieve(osp_core.embed("robot exosquelette"))
+        rag = RagStore(["<the café exoskeleton and its tactile review>", "quantum pancake"])
+        hits = rag.retrieve(osp_core.embed("café exoskeleton review"))
         self.assertTrue(hits and hits[0]["score"] == 1.0)
         self.assertEqual(hits[0]["hash"], osp_core.chunk_hash(self.GOLDEN[2][1]))
 

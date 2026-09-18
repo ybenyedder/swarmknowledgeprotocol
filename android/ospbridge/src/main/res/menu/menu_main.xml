@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toolbar overflow: the Language submenu switches the per-app locale at
+     runtime (AppCompatDelegate.setApplicationLocales — backported below
+     API 33, framework-backed above). Language names stay in their own
+     language in every locale, as is convention. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_language"
+        android:title="@string/menu_language">
+        <menu>
+            <item
+                android:id="@+id/lang_system"
+                android:title="@string/lang_system" />
+            <item
+                android:id="@+id/lang_en"
+                android:title="English" />
+            <item
+                android:id="@+id/lang_fr"
+                android:title="Français" />
+            <item
+                android:id="@+id/lang_zh"
+                android:title="中文" />
+            <item
+                android:id="@+id/lang_ar"
+                android:title="العربية" />
+        </menu>
+    </item>
+</menu>

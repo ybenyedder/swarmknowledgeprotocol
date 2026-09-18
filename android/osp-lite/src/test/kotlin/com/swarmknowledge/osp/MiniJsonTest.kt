@@ -24,7 +24,7 @@ class MiniJsonTest {
 
     @Test
     fun escapesLikePythonEnsureAscii() {
-        val s = "say \"hi\"\nline‑accent é ✅"
+        val s = "say \"hi\"\naccented é ✅"
         val written = MiniJson.write(mapOf("k" to s))
         // é → \u00e9, ✅ → surrogate pair \ud83d\udd00.. — lowercase hex, like Python
         assertTrue("\\u00e9" in written)

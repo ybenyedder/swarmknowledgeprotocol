@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="card_status">节点状态</string>
+    <string name="card_query">询问 swarm</string>
+    <string name="card_teach">注入知识块</string>
+    <string name="card_peer">连接对等节点</string>
+    <string name="peer_url_hint">对等节点 URL（http://主机:端口）</string>
+    <string name="peer_token_hint">对等节点令牌（无则留空）</string>
+    <string name="btn_add_peer">添加对等节点</string>
+    <string name="query_hint">提出问题 — swarm 仅依据已验证的证据作答</string>
+    <string name="teach_hint">粘贴要存储在本设备上的知识块</string>
+    <string name="btn_start">启动节点</string>
+    <string name="btn_stop">停止</string>
+    <string name="btn_query">运行已验证查询（T0）</string>
+    <string name="btn_teach">注入知识块</string>
+    <string name="card_forenseek">Forenseek</string>
+    <string name="btn_log_all">记录全部</string>
+    <string name="btn_reset_all">全部重置</string>
+    <string name="btn_version">版本</string>
+
+    <!-- 运行输出 / 状态消息（MainActivity） -->
+    <string name="token_prefix">令牌：%1$s…</string>
+    <string name="msg_taught">已学习 · %1$d 个知识块</string>
+    <string name="msg_empty_chunk">空知识块</string>
+    <string name="msg_node_not_started">节点未启动 — 请先“启动节点”</string>
+    <string name="msg_saved_to">— 已保存至 %1$s</string>
+    <string name="msg_peer_url_http">对等节点 URL 必须以 http 开头</string>
+    <string name="msg_peer_added">对等节点已添加：%1$s（共 %2$d 个）</string>
+    <string name="msg_peer_failed">对等节点失败：%1$s</string>
+    <string name="msg_service_not_ready">服务未就绪</string>
+    <string name="msg_query_result">mode=%1$s groundedness=%2$s\n\n%3$s</string>
+    <string name="msg_query_error">错误：%1$s</string>
+
+    <!-- 重置对话框 -->
+    <string name="reset_message">抹除此设备上的节点身份、链接令牌、对等节点及已注入的知识？此操作无法撤销。</string>
+    <string name="btn_reset">重置</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_ok">确定</string>
+    <string name="msg_reset_done">重置完成 — 身份、对等节点与知识已清除\n“启动节点”将配置一个全新节点</string>
+
+    <!-- 版本对话框 -->
+    <string name="version_msg">应用     ：v%1$s（%2$s）\n协议     ：OSP v%3$s\n节点     ：%4$s\n引擎     ：%5$s</string>
+    <string name="version_node_none">（未启动）</string>
+    <string name="version_engine_bound">LLMProvider v%1$s</string>
+    <string name="version_engine_unbound">LLMProvider 未绑定</string>
+
+    <!-- 前台服务通知（OspService） -->
+    <string name="notif_channel_name">OSP Bridge</string>
+    <string name="notif_title">OSP Bridge</string>
+    <string name="notif_text">知识节点运行中 · HTTP :%1$s</string>
+
+    <!-- 语言子菜单 -->
+    <string name="menu_language">语言</string>
+    <string name="lang_system">跟随系统</string>
+
+    <!-- 示例查询 -->
+    <string-array name="examples">
+        <item>总结这份资金证明文件</item>
+        <item>财务承诺的日期是什么</item>
+        <item>总结我收到的机器人杂志</item>
+        <item>总结机器人杂志的第 3 篇文章</item>
+        <item>今天收到的视频展示了什么</item>
+    </string-array>
+</resources>

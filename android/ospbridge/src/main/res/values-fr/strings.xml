@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="card_status">État du nœud</string>
+    <string name="card_query">Interroger le swarm</string>
+    <string name="card_teach">Enseigner un chunk</string>
+    <string name="card_peer">Connecter un pair</string>
+    <string name="peer_url_hint">URL du pair (http://hôte:port)</string>
+    <string name="peer_token_hint">Jeton du pair (laisser vide si aucun)</string>
+    <string name="btn_add_peer">Ajouter le pair</string>
+    <string name="query_hint">Posez une question — le swarm ne répond qu\'avec des preuves vérifiées</string>
+    <string name="teach_hint">Collez un chunk de connaissance à stocker sur cet appareil</string>
+    <string name="btn_start">Démarrer le nœud</string>
+    <string name="btn_stop">Arrêter</string>
+    <string name="btn_query">Requête vérifiée (T0)</string>
+    <string name="btn_teach">Enseigner le chunk</string>
+    <string name="card_forenseek">Forenseek</string>
+    <string name="btn_log_all">Tout journaliser</string>
+    <string name="btn_reset_all">Tout réinitialiser</string>
+    <string name="btn_version">Version</string>
+
+    <!-- sorties / messages d\'état (MainActivity) -->
+    <string name="token_prefix">jeton : %1$s…</string>
+    <string name="msg_taught">appris · %1$d chunks</string>
+    <string name="msg_empty_chunk">chunk vide</string>
+    <string name="msg_node_not_started">nœud non démarré — DÉMARREZ LE NŒUD d\'abord</string>
+    <string name="msg_saved_to">— enregistré dans %1$s</string>
+    <string name="msg_peer_url_http">l\'URL du pair doit commencer par http</string>
+    <string name="msg_peer_added">pair ajouté : %1$s (%2$d pairs)</string>
+    <string name="msg_peer_failed">échec du pair : %1$s</string>
+    <string name="msg_service_not_ready">service non prêt</string>
+    <string name="msg_query_result">mode=%1$s groundedness=%2$s\n\n%3$s</string>
+    <string name="msg_query_error">erreur : %1$s</string>
+
+    <!-- dialogue de réinitialisation -->
+    <string name="reset_message">Effacer l\'identité du nœud, le jeton de liaison, les pairs et les connaissances enseignées sur cet appareil ? Action irréversible.</string>
+    <string name="btn_reset">Réinitialiser</string>
+    <string name="btn_cancel">Annuler</string>
+    <string name="btn_ok">OK</string>
+    <string name="msg_reset_done">réinitialisation effectuée — identité, pairs et connaissances effacés\nDÉMARRER LE NŒUD provisionne un nœud neuf</string>
+
+    <!-- dialogue de version -->
+    <string name="version_msg">App      : v%1$s (%2$s)\nProtocole : OSP v%3$s\nNœud     : %4$s\nMoteur   : %5$s</string>
+    <string name="version_node_none">(non démarré)</string>
+    <string name="version_engine_bound">LLMProvider v%1$s</string>
+    <string name="version_engine_unbound">LLMProvider non lié</string>
+
+    <!-- notification du service au premier plan (OspService) -->
+    <string name="notif_channel_name">OSP Bridge</string>
+    <string name="notif_title">OSP Bridge</string>
+    <string name="notif_text">Nœud de connaissance actif · HTTP :%1$s</string>
+
+    <!-- sous-menu langue -->
+    <string name="menu_language">Langue</string>
+    <string name="lang_system">Valeur du système</string>
+
+    <!-- requêtes d\'exemple validées sur le corpus distant -->
+    <string-array name="examples">
+        <item>résume le document justificatif de ressources</item>
+        <item>quelle est la date de l\'engagement financier</item>
+        <item>résume le magazine de robotique reçu</item>
+        <item>résume le 3ème article du magazine de robotique</item>
+        <item>que montre la vidéo reçue aujourd\'hui</item>
+    </string-array>
+</resources>

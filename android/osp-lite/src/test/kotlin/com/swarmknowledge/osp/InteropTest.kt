@@ -101,14 +101,15 @@ class InteropTest {
     @Test
     fun queryCoverMatchesPythonGoldenValues() {
         // Same goldens as test_protocol.py / core.test.mjs: the symmetric
-        // Jaccard collapses when chunk ≫ query (the third case scores 0.286
-        // under Jaccard despite a perfect grounding), so retrieval competence
-        // is query-side coverage, not Jaccard.
+        // Jaccard collapses when chunk ⊋ query (cases three and four score
+        // 0.75 under Jaccard despite a perfect grounding), so retrieval
+        // competence is query-side coverage, not Jaccard. Accented words stay
+        // in the fixtures on purpose: the tokenizer must survive non-ASCII.
         val goldens = listOf(
             Triple("x y", "x z w v u", 0.5),
             Triple("bionics", "quantum pancake", 0.0),
-            Triple("robot exosquelette", "<le robot humanoïde et l'exosquelette tactile>", 1.0),
-            Triple("résumé document reçu", "résumé du document reçu hier", 1.0),
+            Triple("café exoskeleton review", "<the café exoskeleton and its tactile review>", 1.0),
+            Triple("résumé document received", "résumé of the document received yesterday", 1.0),
         )
         for ((q, c, cover) in goldens) {
             assertEquals(cover, queryCover(embed(q), embed(c)), 1e-12)
@@ -117,9 +118,9 @@ class InteropTest {
 
     @Test
     fun ragRetrieveRanksByQueryCover() {
-        val chunk = "<le robot humanoïde et l'exosquelette tactile>"
+        val chunk = "<the café exoskeleton and its tactile review>"
         val rag = RagStore(listOf(chunk, "quantum pancake"))
-        val hits = rag.retrieve(embed("robot exosquelette"))
+        val hits = rag.retrieve(embed("café exoskeleton review"))
         assertTrue(hits.isNotEmpty())
         assertEquals(1.0, hits[0].score, 1e-12)
         assertEquals(chunkHash(chunk), hits[0].chunk.hash)

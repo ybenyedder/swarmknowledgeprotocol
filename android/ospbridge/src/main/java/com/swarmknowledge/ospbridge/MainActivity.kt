@@ -9,6 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -22,6 +25,8 @@ import java.net.URL
  * shows engine binding and budget, teaches a chunk and runs one verified query.
  * Example chips preload the queries field-tested against the remote
  * whatsapp-bot peer (new-mail verification, see android/README.md).
+ * The toolbar overflow carries the Language submenu (per-app locale, UI only —
+ * the knowledge corpus itself stays in whatever language it was taught in).
  */
 class MainActivity : AppCompatActivity() {
 
@@ -37,16 +42,10 @@ class MainActivity : AppCompatActivity() {
     private var peerFieldsRestored = false
 
     /** Field-tested examples: the "new mail" scenario against the bot peer.
-     *  The "3ème article" chip demonstrates honest abstention: the indexed
+     *  The "3rd article" chip demonstrates honest abstention: the indexed
      *  proof doesn't number articles, so the swarm must refuse (INSUFFICIENT_
-     *  EVIDENCE / firewall) rather than guess one. */
-    private val examples = listOf(
-        "résume le document justificatif de ressources",
-        "quelle est la date de l'engagement financier",
-        "résume le magazine de robotique reçu",
-        "résume le 3ème article du magazine de robotique",
-        "que montre la vidéo reçue aujourd'hui",
-    )
+     *  EVIDENCE / firewall) rather than guess one. Localized per UI language. */
+    private val examples: List<String> by lazy { resources.getStringArray(R.array.examples).toList() }
 
     private val poll = object : Runnable {
         override fun run() {
@@ -74,6 +73,8 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
 
+        setupLanguageMenu(findViewById<MaterialToolbar>(R.id.toolbar))
+
         status = findViewById(R.id.status)
         learnBox = findViewById(R.id.learnBox)
         queryBox = findViewById(R.id.queryBox)
@@ -81,7 +82,7 @@ class MainActivity : AppCompatActivity() {
 
         // Show a prefix only: the full link secret stays in app-private prefs
         // (run-as / adb for peering), never on screen in a store build.
-        OspService.instance?.let { out.text = "token: ${it.token.take(6)}…" }
+        OspService.instance?.let { out.text = getString(R.string.token_prefix, it.token.take(6)) }
 
         findViewById<MaterialButton>(R.id.btnStart).setOnClickListener {
             val i = Intent(this, OspService::class.java)
@@ -107,7 +108,8 @@ class MainActivity : AppCompatActivity() {
             Thread {
                 val ok = svc.teach(text)
                 handler.post {
-                    out.text = if (ok) "taught · ${svc.rag.entries.size} chunks" else "empty chunk"
+                    out.text = if (ok) getString(R.string.msg_taught, svc.rag.entries.size)
+                               else getString(R.string.msg_empty_chunk)
                 }
             }.start()
         }
@@ -116,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnLogAll).setOnClickListener {
             val svc = OspService.instance
             if (svc == null) {
-                out.text = "node not started — START NODE first"
+                out.text = getString(R.string.msg_node_not_started)
                 return@setOnClickListener
             }
             Thread {
@@ -132,28 +134,24 @@ class MainActivity : AppCompatActivity() {
                     }
                 } catch (_: Exception) { }
                 handler.post {
-                    out.text = dump + (saved?.let { "\n— saved to $it" } ?: "")
+                    out.text = dump + (saved?.let { getString(R.string.msg_saved_to, it) } ?: "")
                 }
             }.start()
         }
 
         findViewById<MaterialButton>(R.id.btnResetAll).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Reset all")
-                .setMessage(
-                    "Wipe the node identity, link secret, peers and taught " +
-                    "knowledge on this device? This cannot be undone."
-                )
-                .setPositiveButton("Reset") { _, _ ->
+                .setTitle(R.string.btn_reset_all)
+                .setMessage(R.string.reset_message)
+                .setPositiveButton(R.string.btn_reset) { _, _ ->
                     OspService.instance?.resetAll()
                     stopService(Intent(this, OspService::class.java))
                     peerUrl.setText("")
                     peerToken.setText("")
                     peerFieldsRestored = false
-                    out.text = "reset done — identity, peers and knowledge cleared\n" +
-                        "START NODE provisions a fresh node"
+                    out.text = getString(R.string.msg_reset_done)
                 }
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show()
         }
 
@@ -162,20 +160,27 @@ class MainActivity : AppCompatActivity() {
             val vcode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode
             else @Suppress("DEPRECATION") pkg.versionCode.toLong()
             val s = OspService.instance?.statusMap()
+            val nodeLine = (s?.get("node_id")?.toString() ?: getString(R.string.version_node_none))
+                .let { id -> s?.get("node_class")?.toString()?.let { cls -> "$id ($cls)" } ?: id }
+            val engineLine = when {
+                s == null -> "—"
+                s["llmprovider_bound"] == true ->
+                    getString(R.string.version_engine_bound, s["llmprovider_version"]?.toString() ?: "?")
+                else -> getString(R.string.version_engine_unbound)
+            }
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(getString(R.string.app_name))
                 .setMessage(
-                    "App      : v${pkg.versionName} ($vcode)\n" +
-                    "Protocol : OSP v${s?.get("packet_version") ?: "0.6"}\n" +
-                    "Node     : ${s?.get("node_id") ?: "(not started)"}" +
-                    (s?.get("node_class")?.let { " ($it)" } ?: "") + "\n" +
-                    "Engine   : " + when {
-                        s == null -> "—"
-                        s["llmprovider_bound"] == true -> "LLMProvider v${s["llmprovider_version"]}"
-                        else -> "LLMProvider not bound"
-                    }
+                    getString(
+                        R.string.version_msg,
+                        pkg.versionName ?: "?",
+                        vcode.toString(),
+                        s?.get("packet_version")?.toString() ?: "0.6",
+                        nodeLine,
+                        engineLine,
+                    )
                 )
-                .setPositiveButton("OK", null)
+                .setPositiveButton(R.string.btn_ok, null)
                 .show()
         }
 
@@ -188,7 +193,7 @@ class MainActivity : AppCompatActivity() {
             val svc = OspService.instance ?: return@setOnClickListener
             val url = peerUrl.text.toString().trim().removeSuffix("/")
             if (!url.startsWith("http")) {
-                out.text = "peer URL must start with http"
+                out.text = getString(R.string.msg_peer_url_http)
                 return@setOnClickListener
             }
             // link secrets are whitespace-free; strip everything so a pasted
@@ -202,9 +207,9 @@ class MainActivity : AppCompatActivity() {
                     val nodeId = status["node_id"]?.toString()
                         ?: url.substringAfter("//").replace('/', '_')
                     svc.setPeers(svc.remotes + (nodeId to OspService.Peer(url, token.ifEmpty { null })))
-                    "peer added: $nodeId (${svc.remotes.size} peers)"
+                    getString(R.string.msg_peer_added, nodeId, svc.remotes.size)
                 } catch (e: Exception) {
-                    "peer failed: ${e.message}"
+                    getString(R.string.msg_peer_failed, e.message ?: "?")
                 }
                 handler.post {
                     out.text = result
@@ -220,13 +225,39 @@ class MainActivity : AppCompatActivity() {
             Thread {
                 val result = try {
                     val o = svc.submitQueryLocal(text, 0)
-                    if (o == null) "service not ready"
-                    else "mode=${o.mode} groundedness=${o.groundedness}\n\n${o.answer ?: o.detail}"
+                    if (o == null) getString(R.string.msg_service_not_ready)
+                    else getString(R.string.msg_query_result, o.mode, o.groundedness.toString(), o.answer ?: o.detail)
                 } catch (e: Exception) {
-                    "error: ${e.message}"
+                    getString(R.string.msg_query_error, e.message ?: "?")
                 }
                 handler.post { out.text = result }
             }.start()
+        }
+    }
+
+    /**
+     * Toolbar overflow → Language submenu. Empty tag = follow the system
+     * locale; otherwise pin the per-app locale. appcompat applies it to all
+     * activities (auto-recreate) and, with autoStoreLocales declared in the
+     * manifest, survives process death; on API 33+ it is backed by the
+     * framework's per-app language settings.
+     */
+    private fun setupLanguageMenu(toolbar: MaterialToolbar) {
+        toolbar.inflateMenu(R.menu.menu_main)
+        toolbar.setOnMenuItemClickListener { item ->
+            val tag = when (item.itemId) {
+                R.id.lang_system -> ""
+                R.id.lang_en -> "en"
+                R.id.lang_fr -> "fr"
+                R.id.lang_zh -> "zh"
+                R.id.lang_ar -> "ar"
+                else -> return@setOnMenuItemClickListener false
+            }
+            AppCompatDelegate.setApplicationLocales(
+                if (tag.isEmpty()) LocaleListCompat.getEmptyLocaleList()
+                else LocaleListCompat.forLanguageTags(tag)
+            )
+            true
         }
     }
 

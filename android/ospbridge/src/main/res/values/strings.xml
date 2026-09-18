@@ -18,4 +18,51 @@
     <string name="btn_log_all">Log all</string>
     <string name="btn_reset_all">Reset all</string>
     <string name="btn_version">Version</string>
+
+    <!-- run output / status messages (MainActivity) -->
+    <string name="token_prefix">token: %1$s…</string>
+    <string name="msg_taught">taught · %1$d chunks</string>
+    <string name="msg_empty_chunk">empty chunk</string>
+    <string name="msg_node_not_started">node not started — START NODE first</string>
+    <string name="msg_saved_to">— saved to %1$s</string>
+    <string name="msg_peer_url_http">peer URL must start with http</string>
+    <string name="msg_peer_added">peer added: %1$s (%2$d peers)</string>
+    <string name="msg_peer_failed">peer failed: %1$s</string>
+    <string name="msg_service_not_ready">service not ready</string>
+    <string name="msg_query_result">mode=%1$s groundedness=%2$s\n\n%3$s</string>
+    <string name="msg_query_error">error: %1$s</string>
+
+    <!-- reset dialog -->
+    <string name="reset_message">Wipe the node identity, link secret, peers and taught knowledge on this device? This cannot be undone.</string>
+    <string name="btn_reset">Reset</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_ok">OK</string>
+    <string name="msg_reset_done">reset done — identity, peers and knowledge cleared\nSTART NODE provisions a fresh node</string>
+
+    <!-- version dialog -->
+    <string name="version_msg">App      : v%1$s (%2$s)\nProtocol : OSP v%3$s\nNode     : %4$s\nEngine   : %5$s</string>
+    <string name="version_node_none">(not started)</string>
+    <string name="version_engine_bound">LLMProvider v%1$s</string>
+    <string name="version_engine_unbound">LLMProvider not bound</string>
+
+    <!-- foreground notification (OspService) -->
+    <string name="notif_channel_name">OSP Bridge</string>
+    <string name="notif_title">OSP Bridge</string>
+    <string name="notif_text">Knowledge node active · HTTP :%1$s</string>
+
+    <!-- language submenu (toolbar overflow) -->
+    <string name="menu_language">Language</string>
+    <string name="lang_system">System default</string>
+
+    <!-- field-tested example queries (chips). The French set is the one
+         validated against the remote whatsapp-bot corpus; other locales are
+         faithful translations with the same demonstration intent (the "3rd
+         article" chip shows honest abstention on unnumbered evidence). -->
+    <string-array name="examples">
+        <item>summarize the funding justification document</item>
+        <item>what is the date of the financial commitment</item>
+        <item>summarize the robotics magazine I received</item>
+        <item>summarize the 3rd article of the robotics magazine</item>
+        <item>what does the video received today show</item>
+    </string-array>
 </resources>

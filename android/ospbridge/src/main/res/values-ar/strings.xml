@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="card_status">حالة العقدة</string>
+    <string name="card_query">اسأل السرب</string>
+    <string name="card_teach">تعليم مقطع معرفي</string>
+    <string name="card_peer">ربط عقدة نظيرة</string>
+    <string name="peer_url_hint">رابط العقدة النظيرة (http://host:port)</string>
+    <string name="peer_token_hint">رمز العقدة النظيرة (اتركه فارغًا إن لم يوجد)</string>
+    <string name="btn_add_peer">إضافة العقدة النظيرة</string>
+    <string name="query_hint">اطرح سؤالاً — لا يجيب السرب إلا بالأدلة المتحقَّق منها</string>
+    <string name="teach_hint">الصق مقطعاً معرفياً لتخزينه على هذا الجهاز</string>
+    <string name="btn_start">بدء العقدة</string>
+    <string name="btn_stop">إيقاف</string>
+    <string name="btn_query">تشغيل استعلام موثَّق (T0)</string>
+    <string name="btn_teach">تعليم المقطع</string>
+    <string name="card_forenseek">Forenseek</string>
+    <string name="btn_log_all">تسجيل الكل</string>
+    <string name="btn_reset_all">إعادة تعيين الكل</string>
+    <string name="btn_version">الإصدار</string>
+
+    <!-- مخرجات التشغيل / رسائل الحالة (MainActivity) -->
+    <string name="token_prefix">الرمز: %1$s…</string>
+    <string name="msg_taught">تم التعليم · %1$d مقطعاً</string>
+    <string name="msg_empty_chunk">مقطع فارغ</string>
+    <string name="msg_node_not_started">العقدة غير مُشغَّلة — ابدأ العقدة أولاً</string>
+    <string name="msg_saved_to">— حُفظ في %1$s</string>
+    <string name="msg_peer_url_http">يجب أن يبدأ رابط العقدة النظيرة بـ http</string>
+    <string name="msg_peer_added">أُضيفت العقدة النظيرة: %1$s (%2$d عقد)</string>
+    <string name="msg_peer_failed">فشلت العقدة النظيرة: %1$s</string>
+    <string name="msg_service_not_ready">الخدمة غير جاهزة</string>
+    <string name="msg_query_result">mode=%1$s groundedness=%2$s\n\n%3$s</string>
+    <string name="msg_query_error">خطأ: %1$s</string>
+
+    <!-- حوار إعادة التعيين -->
+    <string name="reset_message">مسح هوية العقدة ورمز الربط والعقد النظيرة والمعرفة المُعلَّمة على هذا الجهاز؟ لا يمكن التراجع عن ذلك.</string>
+    <string name="btn_reset">إعادة تعيين</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="btn_ok">موافق</string>
+    <string name="msg_reset_done">تمت إعادة التعيين — مُسيت الهوية والعقد النظيرة والمعرفة\n«بدء العقدة» يجهّز عقدة جديدة</string>
+
+    <!-- حوار الإصدار -->
+    <string name="version_msg">التطبيق   : v%1$s (%2$s)\nالبروتوكول : OSP v%3$s\nالعقدة     : %4$s\nالمحرك     : %5$s</string>
+    <string name="version_node_none">(غير مُشغَّلة)</string>
+    <string name="version_engine_bound">LLMProvider v%1$s</string>
+    <string name="version_engine_unbound">LLMProvider غير مرتبط</string>
+
+    <!-- إشعار الخدمة الأمامية (OspService) -->
+    <string name="notif_channel_name">OSP Bridge</string>
+    <string name="notif_title">OSP Bridge</string>
+    <string name="notif_text">عقدة المعرفة نشطة · HTTP :%1$s</string>
+
+    <!-- قائمة اللغة -->
+    <string name="menu_language">اللغة</string>
+    <string name="lang_system">لغة النظام</string>
+
+    <!-- استعلامات نموذجية -->
+    <string-array name="examples">
+        <item>لخّص وثيقة تبرير التمويل</item>
+        <item>ما هو تاريخ الالتزام المالي</item>
+        <item>لخّص مجلة الروبوتات التي وصلتني</item>
+        <item>لخّص المقال الثالث من مجلة الروبوتات</item>
+        <item>ماذا يُظهر الفيديو الذي وصل اليوم</item>
+    </string-array>
+</resources>

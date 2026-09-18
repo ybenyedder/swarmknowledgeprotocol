@@ -318,7 +318,8 @@ class OspService : Service() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "OSP Bridge", NotificationManager.IMPORTANCE_LOW))
+                NotificationChannel(CHANNEL_ID, getString(R.string.notif_channel_name),
+                    NotificationManager.IMPORTANCE_LOW))
         }
         val builder = if (Build.VERSION.SDK_INT >= 26) {
             Notification.Builder(this, CHANNEL_ID)
@@ -326,8 +327,8 @@ class OspService : Service() {
             @Suppress("DEPRECATION") Notification.Builder(this)
         }
         val n: Notification = builder
-            .setContentTitle("OSP Bridge")
-            .setContentText("Knowledge node active · HTTP :$httpPort")
+            .setContentTitle(getString(R.string.notif_title))
+            .setContentText(getString(R.string.notif_text, httpPort))
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
             .build()
