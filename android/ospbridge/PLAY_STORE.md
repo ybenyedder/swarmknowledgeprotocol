@@ -31,9 +31,10 @@ KEY FEATURES
 • Privacy tiers — sensitive (T2) traffic never goes to remote providers.
 • Honest failures — timeouts, out-of-gas, loops and ungrounded answers
   end in explicit, inspectable outcomes, never a silent wrong answer.
-• Forenseek menu — one-tap diagnostics: LOG ALL exports a complete node
-  journal (link secrets truncated), VERSION shows app + protocol versions,
-  RESET ALL wipes identity, peers and taught knowledge.
+• Support menu — one-tap diagnostics in the toolbar overflow: LOG ALL
+  exports a complete node journal (link secrets truncated), VERSION shows
+  app + protocol versions, RESET ALL wipes identity, peers and taught
+  knowledge, and HELP explains the node in the selected app language.
 • Tree4Five Material design — same dark look and feel as the LLM Provider
   app.
 
