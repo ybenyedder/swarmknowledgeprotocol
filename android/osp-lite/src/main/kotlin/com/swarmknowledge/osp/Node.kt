@@ -109,6 +109,13 @@ class Node(
         return dispatch(pkt)
     }
 
+    /** Protocol numbers arrive JSON-parsed: an integral value ("0", "1")
+     *  parses to Long, a fractional one to Double — the wire contract is
+     *  "a number", so accept both (a bot emitting mapping_distance: 0 on an
+     *  exact-evidence match crashed the origin with a ClassCastException). */
+    private fun dbl(v: Any?): Double = (v as? Number)?.toDouble()
+        ?: error("expected a number, got $v")
+
     private fun rfo(pkt: Packet, mode: Mode, reason: String): Packet = Packet(
         action = Action.RFO, originId = pkt.originId, queryId = pkt.queryId,
         sender = id, gas = pkt.gas,
@@ -263,9 +270,9 @@ class Node(
                 "${capable.size} verified capable bids < q=$q", origin = id, budgetLeft = budget.left)
 
         // 03 ALIGN — one clarify round max (C = 1, v0.5)
-        val winner = capable.maxBy { it.payload["bid"] as Double }
+        val winner = capable.maxBy { dbl(it.payload["bid"]) }
         val prov = (winner.payload["provenance"] as List<*>).first() as Map<*, *>
-        val dist0 = 1.0 - (winner.payload["retrieval_similarity"] as Double)
+        val dist0 = 1.0 - dbl(winner.payload["retrieval_similarity"])
         hooks["pre_align"]?.invoke(winner)      // test seam: mutate state pre-align
         val align = Packet(
             action = Action.ALIGN, originId = id, queryId = winner.queryId,
@@ -280,7 +287,7 @@ class Node(
         trace.add(mapOf("from" to winner.sender, "action" to "ALIGN"))
         if (alignReply == null || alignReply.action == Action.RFO)
             return outcome(Mode.MISMATCH, trace, "alignment refused", origin = id, budgetLeft = budget.left)
-        val dist1 = alignReply.payload["mapping_distance"] as Double
+        val dist1 = dbl(alignReply.payload["mapping_distance"])
         // C3 with C = 1: the first align is a lock-in — the responder's evidence
         // may not drift beyond tolerance between BID and ALIGN. The γ-contraction
         // rule applies to clarify rounds 2..C (C > 1).
@@ -343,7 +350,7 @@ class Node(
     private fun diverseBids(bids: List<Packet>): List<Packet> {
         // C4: votes citing the same leading chunk_hash count once
         val seen = HashSet<String>()
-        return bids.sortedByDescending { it.payload["bid"] as Double }
+        return bids.sortedByDescending { dbl(it.payload["bid"]) }
             .filter {
                 val h = ((it.payload["provenance"] as List<*>).first() as Map<*, *>)["chunk_hash"].toString()
                 seen.add(h)
