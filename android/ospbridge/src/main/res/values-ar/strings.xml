@@ -13,10 +13,6 @@
     <string name="btn_stop">إيقاف</string>
     <string name="btn_query">تشغيل استعلام موثَّق (T0)</string>
     <string name="btn_teach">تعليم المقطع</string>
-    <string name="card_forenseek">Forenseek</string>
-    <string name="btn_log_all">تسجيل الكل</string>
-    <string name="btn_reset_all">إعادة تعيين الكل</string>
-    <string name="btn_version">الإصدار</string>
 
     <!-- مخرجات التشغيل / رسائل الحالة (MainActivity) -->
     <string name="token_prefix">الرمز: %1$s…</string>
@@ -52,6 +48,12 @@
 
     <!-- قائمة اللغة -->
     <string name="menu_language">اللغة</string>
+    <!-- إجراءات الدعم في قائمة الشريط (MainActivity) -->
+    <string name="menu_log_all">تسجيل الكل</string>
+    <string name="menu_reset_all">إعادة تعيين الكل</string>
+    <string name="menu_version">الإصدار</string>
+    <string name="menu_help">مساعدة</string>
+    <string name="help_message">طريقة استخدام هذه العقدة:\n\n1. ابدأ العقدة — تهيئة هوية هذا الجهاز وفتح جسر HTTP المحلي.\n2. علّم جزء معرفة — الصق نصًا لتخزينه كمعرفة محلية.\n3. اربط عقدة نظيرة — أدخل عنوان URL للعقدة النظيرة ومفتاح الربط (مثل عقدة whatsapp-bot).\n4. اسأل السرب — تُدار الأسئلة بالتفاوض مع النظراء (OSP v0.6)؛ تأتي الإجابات من أدلة موثّقة فقط، وإلا تمتنع العقدة.\n\nاللغة والسجل وإعادة التعيين والإصدار كلها في القائمة نفسها. تُعرض المساعدة دائمًا بلغة التطبيق المختارة.</string>
     <string name="lang_system">لغة النظام</string>
 
     <!-- استعلامات نموذجية -->

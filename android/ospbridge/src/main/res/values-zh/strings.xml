@@ -13,10 +13,6 @@
     <string name="btn_stop">停止</string>
     <string name="btn_query">运行已验证查询（T0）</string>
     <string name="btn_teach">注入知识块</string>
-    <string name="card_forenseek">Forenseek</string>
-    <string name="btn_log_all">记录全部</string>
-    <string name="btn_reset_all">全部重置</string>
-    <string name="btn_version">版本</string>
 
     <!-- 运行输出 / 状态消息（MainActivity） -->
     <string name="token_prefix">令牌：%1$s…</string>
@@ -52,6 +48,12 @@
 
     <!-- 语言子菜单 -->
     <string name="menu_language">语言</string>
+    <!-- 工具栏菜单中的支持操作（MainActivity） -->
+    <string name="menu_log_all">记录全部</string>
+    <string name="menu_reset_all">全部重置</string>
+    <string name="menu_version">版本</string>
+    <string name="menu_help">帮助</string>
+    <string name="help_message">本节点的使用方法：\n\n1. 启动节点 — 为本设备配置身份并打开本地 HTTP 桥接。\n2. 教授知识块 — 粘贴一段文本作为本地知识存储。\n3. 连接对等节点 — 输入对等节点的 URL 和链接密钥（例如 whatsapp-bot 节点）。\n4. 询问群体 — 问题通过对等协商（OSP v0.6）处理；回答仅来自已验证的证据，否则节点将弃权。\n\n语言、日志、完全重置和版本都在同一菜单中。帮助始终以所选应用语言显示。</string>
     <string name="lang_system">跟随系统</string>
 
     <!-- 示例查询 -->

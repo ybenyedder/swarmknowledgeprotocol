@@ -14,10 +14,6 @@
     <string name="btn_stop">Stop</string>
     <string name="btn_query">Run verified query (T0)</string>
     <string name="btn_teach">Teach chunk</string>
-    <string name="card_forenseek">Forenseek</string>
-    <string name="btn_log_all">Log all</string>
-    <string name="btn_reset_all">Reset all</string>
-    <string name="btn_version">Version</string>
 
     <!-- run output / status messages (MainActivity) -->
     <string name="token_prefix">token: %1$s…</string>
@@ -54,6 +50,12 @@
     <!-- language submenu (toolbar overflow) -->
     <string name="menu_language">Language</string>
     <string name="lang_system">System default</string>
+    <!-- toolbar overflow support actions (MainActivity) -->
+    <string name="menu_log_all">Log all</string>
+    <string name="menu_reset_all">Reset all</string>
+    <string name="menu_version">Version</string>
+    <string name="menu_help">Help</string>
+    <string name="help_message">How to use this node:\n\n1. START NODE — provisions this device\'s identity and opens the local HTTP bridge.\n2. TEACH A CHUNK — paste a piece of text to store as local knowledge.\n3. CONNECT A PEER — enter the peer\'s URL and link secret (for example a whatsapp-bot node).\n4. ASK THE SWARM — questions are negotiated with peers (OSP v0.6); answers come only from verified evidence, otherwise the node abstains.\n\nLanguage, log dump, full reset and version live in this same menu. Help is always shown in the selected app language.</string>
 
     <!-- field-tested example queries (chips). The French set is the one
          validated against the remote whatsapp-bot corpus; other locales are

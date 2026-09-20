@@ -26,7 +26,9 @@ import java.net.URL
  * Example chips preload the queries field-tested against the remote
  * whatsapp-bot peer (new-mail verification, see android/README.md).
  * The toolbar overflow carries the Language submenu (per-app locale, UI only —
- * the knowledge corpus itself stays in whatever language it was taught in).
+ * the knowledge corpus itself stays in whatever language it was taught in)
+ * plus the support actions: log dump, full reset, version and a localized
+ * help dialog.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -73,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
 
-        setupLanguageMenu(findViewById<MaterialToolbar>(R.id.toolbar))
+        setupToolbarMenu(findViewById<MaterialToolbar>(R.id.toolbar))
 
         status = findViewById(R.id.status)
         learnBox = findViewById(R.id.learnBox)
@@ -112,76 +114,6 @@ class MainActivity : AppCompatActivity() {
                                else getString(R.string.msg_empty_chunk)
                 }
             }.start()
-        }
-
-        // Forenseek menu: diagnostics dump, full reset, version — support tools
-        findViewById<MaterialButton>(R.id.btnLogAll).setOnClickListener {
-            val svc = OspService.instance
-            if (svc == null) {
-                out.text = getString(R.string.msg_node_not_started)
-                return@setOnClickListener
-            }
-            Thread {
-                val dump = svc.dumpInfo()
-                val dir = getExternalFilesDir(null) ?: filesDir
-                var saved: String? = null
-                try {
-                    val f = java.io.File(dir, "forenseek_%d.txt".format(System.currentTimeMillis()))
-                    f.writeText(dump)
-                    saved = f.absolutePath
-                    dump.chunked(3000).forEachIndexed { i, part ->
-                        android.util.Log.i("forenseek", "[$i] $part")
-                    }
-                } catch (_: Exception) { }
-                handler.post {
-                    out.text = dump + (saved?.let { getString(R.string.msg_saved_to, it) } ?: "")
-                }
-            }.start()
-        }
-
-        findViewById<MaterialButton>(R.id.btnResetAll).setOnClickListener {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(R.string.btn_reset_all)
-                .setMessage(R.string.reset_message)
-                .setPositiveButton(R.string.btn_reset) { _, _ ->
-                    OspService.instance?.resetAll()
-                    stopService(Intent(this, OspService::class.java))
-                    peerUrl.setText("")
-                    peerToken.setText("")
-                    peerFieldsRestored = false
-                    out.text = getString(R.string.msg_reset_done)
-                }
-                .setNegativeButton(R.string.btn_cancel, null)
-                .show()
-        }
-
-        findViewById<MaterialButton>(R.id.btnVersion).setOnClickListener {
-            val pkg = packageManager.getPackageInfo(packageName, 0)
-            val vcode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode
-            else @Suppress("DEPRECATION") pkg.versionCode.toLong()
-            val s = OspService.instance?.statusMap()
-            val nodeLine = (s?.get("node_id")?.toString() ?: getString(R.string.version_node_none))
-                .let { id -> s?.get("node_class")?.toString()?.let { cls -> "$id ($cls)" } ?: id }
-            val engineLine = when {
-                s == null -> "—"
-                s["llmprovider_bound"] == true ->
-                    getString(R.string.version_engine_bound, s["llmprovider_version"]?.toString() ?: "?")
-                else -> getString(R.string.version_engine_unbound)
-            }
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(getString(R.string.app_name))
-                .setMessage(
-                    getString(
-                        R.string.version_msg,
-                        pkg.versionName ?: "?",
-                        vcode.toString(),
-                        s?.get("packet_version")?.toString() ?: "0.6",
-                        nodeLine,
-                        engineLine,
-                    )
-                )
-                .setPositiveButton(R.string.btn_ok, null)
-                .show()
         }
 
         // Peering straight from the UI: resolve the remote's node id from its
@@ -242,29 +174,123 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Toolbar overflow → Language submenu. Empty tag = follow the system
-     * locale; otherwise pin the per-app locale. appcompat applies it to all
-     * activities (auto-recreate) and, with autoStoreLocales declared in the
-     * manifest, survives process death; on API 33+ it is backed by the
-     * framework's per-app language settings.
+     * Toolbar overflow: the Language submenu plus the support actions (log
+     * dump, full reset, version, help — moved off the main screen). Empty
+     * tag = follow the system locale; otherwise pin the per-app locale.
+     * appcompat applies it to all activities (auto-recreate) and, with
+     * autoStoreLocales declared in the manifest, survives process death; on
+     * API 33+ it is backed by the framework's per-app language settings.
      */
-    private fun setupLanguageMenu(toolbar: MaterialToolbar) {
+    private fun setupToolbarMenu(toolbar: MaterialToolbar) {
         toolbar.inflateMenu(R.menu.menu_main)
         toolbar.setOnMenuItemClickListener { item ->
-            val tag = when (item.itemId) {
+            val localeTag = when (item.itemId) {
                 R.id.lang_system -> ""
                 R.id.lang_en -> "en"
                 R.id.lang_fr -> "fr"
                 R.id.lang_zh -> "zh"
                 R.id.lang_ar -> "ar"
-                else -> return@setOnMenuItemClickListener false
+                else -> null
             }
-            AppCompatDelegate.setApplicationLocales(
-                if (tag.isEmpty()) LocaleListCompat.getEmptyLocaleList()
-                else LocaleListCompat.forLanguageTags(tag)
-            )
-            true
+            if (localeTag != null) {
+                AppCompatDelegate.setApplicationLocales(
+                    if (localeTag.isEmpty()) LocaleListCompat.getEmptyLocaleList()
+                    else LocaleListCompat.forLanguageTags(localeTag)
+                )
+                return@setOnMenuItemClickListener true
+            }
+            when (item.itemId) {
+                R.id.action_log_all -> { logAll(); true }
+                R.id.action_reset_all -> { confirmResetAll(); true }
+                R.id.action_version -> { showVersion(); true }
+                R.id.action_help -> { showHelp(); true }
+                else -> false
+            }
         }
+    }
+
+    /** Diagnostics dump (forenseek): full node state to the run output, a
+     *  timestamped file in app-external storage, and logcat in 3k chunks. */
+    private fun logAll() {
+        val svc = OspService.instance
+        if (svc == null) {
+            out.text = getString(R.string.msg_node_not_started)
+            return
+        }
+        Thread {
+            val dump = svc.dumpInfo()
+            val dir = getExternalFilesDir(null) ?: filesDir
+            var saved: String? = null
+            try {
+                val f = java.io.File(dir, "forenseek_%d.txt".format(System.currentTimeMillis()))
+                f.writeText(dump)
+                saved = f.absolutePath
+                dump.chunked(3000).forEachIndexed { i, part ->
+                    android.util.Log.i("forenseek", "[$i] $part")
+                }
+            } catch (_: Exception) { }
+            handler.post {
+                out.text = dump + (saved?.let { getString(R.string.msg_saved_to, it) } ?: "")
+            }
+        }.start()
+    }
+
+    /** Full reset behind a confirmation: wipes node identity, link secret,
+     *  peers and taught knowledge, then stops the service. */
+    private fun confirmResetAll() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.menu_reset_all)
+            .setMessage(R.string.reset_message)
+            .setPositiveButton(R.string.btn_reset) { _, _ ->
+                OspService.instance?.resetAll()
+                stopService(Intent(this, OspService::class.java))
+                peerUrl.setText("")
+                peerToken.setText("")
+                peerFieldsRestored = false
+                out.text = getString(R.string.msg_reset_done)
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    /** App / protocol / node / engine identity card. */
+    private fun showVersion() {
+        val pkg = packageManager.getPackageInfo(packageName, 0)
+        val vcode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode
+        else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+        val s = OspService.instance?.statusMap()
+        val nodeLine = (s?.get("node_id")?.toString() ?: getString(R.string.version_node_none))
+            .let { id -> s?.get("node_class")?.toString()?.let { cls -> "$id ($cls)" } ?: id }
+        val engineLine = when {
+            s == null -> "—"
+            s["llmprovider_bound"] == true ->
+                getString(R.string.version_engine_bound, s["llmprovider_version"]?.toString() ?: "?")
+            else -> getString(R.string.version_engine_unbound)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.app_name))
+            .setMessage(
+                getString(
+                    R.string.version_msg,
+                    pkg.versionName ?: "?",
+                    vcode.toString(),
+                    s?.get("packet_version")?.toString() ?: "0.6",
+                    nodeLine,
+                    engineLine,
+                )
+            )
+            .setPositiveButton(R.string.btn_ok, null)
+            .show()
+    }
+
+    /** How to use the node — rendered in the selected app language (the
+     *  resource system picks the locale's strings.xml). */
+    private fun showHelp() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.menu_help))
+            .setMessage(getString(R.string.help_message))
+            .setPositiveButton(R.string.btn_ok, null)
+            .show()
     }
 
     override fun onStart() {

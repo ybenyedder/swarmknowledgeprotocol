@@ -2,7 +2,9 @@
 <!-- Toolbar overflow: the Language submenu switches the per-app locale at
      runtime (AppCompatDelegate.setApplicationLocales — backported below
      API 33, framework-backed above). Language names stay in their own
-     language in every locale, as is convention. -->
+     language in every locale, as is convention. The support actions (log
+     dump, full reset, version, help) live here too — they moved off the
+     main screen so the query surface stays minimal. -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_language"
@@ -25,4 +27,16 @@
                 android:title="العربية" />
         </menu>
     </item>
+    <item
+        android:id="@+id/action_log_all"
+        android:title="@string/menu_log_all" />
+    <item
+        android:id="@+id/action_reset_all"
+        android:title="@string/menu_reset_all" />
+    <item
+        android:id="@+id/action_version"
+        android:title="@string/menu_version" />
+    <item
+        android:id="@+id/action_help"
+        android:title="@string/menu_help" />
 </menu>

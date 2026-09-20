@@ -13,10 +13,6 @@
     <string name="btn_stop">Arrêter</string>
     <string name="btn_query">Requête vérifiée (T0)</string>
     <string name="btn_teach">Enseigner le chunk</string>
-    <string name="card_forenseek">Forenseek</string>
-    <string name="btn_log_all">Tout journaliser</string>
-    <string name="btn_reset_all">Tout réinitialiser</string>
-    <string name="btn_version">Version</string>
 
     <!-- sorties / messages d\'état (MainActivity) -->
     <string name="token_prefix">jeton : %1$s…</string>
@@ -52,6 +48,12 @@
 
     <!-- sous-menu langue -->
     <string name="menu_language">Langue</string>
+    <!-- actions de support du menu overflow (MainActivity) -->
+    <string name="menu_log_all">Tout journaliser</string>
+    <string name="menu_reset_all">Tout réinitialiser</string>
+    <string name="menu_version">Version</string>
+    <string name="menu_help">Aide</string>
+    <string name="help_message">Utilisation de ce nœud :\n\n1. DÉMARRER LE NŒUD — provisionne l\'identité de cet appareil et ouvre le pont HTTP local.\n2. ENSEIGNER UN CHUNK — collez un texte à stocker comme connaissance locale.\n3. CONNECTER UN PAIR — saisissez l\'URL du pair et son jeton de liaison (par exemple un nœud whatsapp-bot).\n4. INTERROGER LE SWARM — les questions sont négociées avec les pairs (OSP v0.6) ; les réponses proviennent uniquement de preuves vérifiées, sinon le nœud s\'abstient.\n\nLangue, journalisation, réinitialisation et version se trouvent dans ce même menu. L\'aide est toujours affichée dans la langue choisie de l\'application.</string>
     <string name="lang_system">Valeur du système</string>
 
     <!-- requêtes d\'exemple validées sur le corpus distant -->

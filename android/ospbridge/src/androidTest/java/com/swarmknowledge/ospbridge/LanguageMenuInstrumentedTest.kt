@@ -89,8 +89,32 @@ class LanguageMenuInstrumentedTest {
                 assertNotNull(sub.findItem(R.id.lang_fr))
                 assertNotNull(sub.findItem(R.id.lang_zh))
                 assertNotNull(sub.findItem(R.id.lang_ar))
+                // support actions moved here from the main screen (v0.6.2)
+                assertNotNull(toolbar.menu.findItem(R.id.action_log_all))
+                assertNotNull(toolbar.menu.findItem(R.id.action_reset_all))
+                assertNotNull(toolbar.menu.findItem(R.id.action_version))
+                assertNotNull(toolbar.menu.findItem(R.id.action_help))
             }
         }
+    }
+
+    @Test
+    fun helpMenuOpensTheLocalizedHelpDialog() {
+        ActivityScenario.launch(MainActivity::class.java)
+        device.wait(Until.hasObject(By.text("Start node")), 15_000)
+
+        val overflow = overflowButton()
+        assertNotNull("overflow button not found", overflow)
+        overflow!!.click()
+        assertTrue("Help entry missing", tapText("Help"))
+
+        // The help dialog renders the localized title and body.
+        val dialog = device.wait(Until.hasObject(By.text("How to use this node:")), 5_000)
+        assertNotNull("help dialog body should be visible", dialog)
+
+        // Dismiss so the next test starts from a clean surface.
+        device.pressBack()
+        device.wait(Until.gone(By.text("How to use this node:")), 5_000)
     }
 
     @Test
