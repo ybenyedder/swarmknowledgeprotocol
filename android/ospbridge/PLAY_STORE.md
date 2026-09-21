@@ -50,7 +50,7 @@ WHO IS IT FOR
   conformance tests at the project repository.
 
 HONEST POSTURE
-Early release (v0.6.0), developer-oriented: peering is manual (URL +
+Early release (v0.6.3), developer-oriented: peering is manual (URL +
 token), packets are signed and TTL/gas-bounded, and a production
 Ed25519 + TLS signer is the committed next step.
 
@@ -117,6 +117,17 @@ paste the link in App content → Privacy policy).
   declared usage: peering with the user's own devices.
 - **Privacy policy URL**: required (host PRIVACY_POLICY.md anywhere
   public, e.g. GitHub Pages / a tree4five site page).
+
+### Release notes (v0.6.3 — versionCode 4)
+
+```
+Stability and security fixes — no protocol change.
+• Fixed a crash on the asking device when a peer reports an exact
+  evidence match (integral JSON number).
+• Fixed concurrent-query handling in the node engine.
+• Restored link-token authentication on the packet endpoint; peers may
+  also send the token as x-api-token.
+```
 
 ### Release notes (v0.6.0)
 
