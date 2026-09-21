@@ -194,7 +194,7 @@ class LLMProviderFileAdapter(D3Provider):
     @staticmethod
     def candidate_dirs() -> list[Path]:
         repo_root = Path(__file__).resolve().parent.parent  # .../swarmknowledge_protocol
-        home = repo_root.parent                              # /home/pc
+        home = repo_root.parent.parent                       # /home/pc
         return [home / "LLMprovider", home / "sby" / "LLMProvider"]
 
     def __init__(self, provider_dir: Path | None = None):

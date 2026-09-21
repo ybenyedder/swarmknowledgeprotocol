@@ -1,5 +1,7 @@
 package com.swarmknowledge.osp
 
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.round
 
 /**
@@ -7,15 +9,18 @@ import kotlin.math.round
  * battery-saver node stops charging it entirely (routing/pre-bidding stay alive).
  */
 class Budget(private val generationsPerDay: Int = 50) {
-    var spent: Int = 0
-        private set
+    private val _spent = AtomicInteger(0)
+    val spent: Int
+        get() = _spent.get()
     val left: Int
-        get() = maxOf(0, generationsPerDay - spent)
+        get() = maxOf(0, generationsPerDay - _spent.get())
 
     fun charge(n: Int = 1): Boolean {
-        if (left < n) return false
-        spent += n
-        return true
+        while (true) {
+            val s = _spent.get()
+            if (generationsPerDay - s < n) return false
+            if (_spent.compareAndSet(s, s + n)) return true
+        }
     }
 }
 
@@ -30,7 +35,7 @@ fun round3(x: Double): Double = round(x * 1000.0) / 1000.0
  * production stores 48 B packed bitvectors (v0.5) behind the same interface.
  */
 class RagStore(chunks: List<String> = emptyList()) {
-    val entries: MutableList<Chunk> = chunks.mapTo(ArrayList()) { Chunk(chunkHash(it), it, embed(it)) }
+    val entries: MutableList<Chunk> = chunks.mapTo(CopyOnWriteArrayList()) { Chunk(chunkHash(it), it, embed(it)) }
 
     /** Add knowledge at runtime (e.g. ospbridge /osp/teach or AIDL advertisement). */
     fun add(text: String): Chunk = Chunk(chunkHash(text), text, embed(text)).also { entries.add(it) }

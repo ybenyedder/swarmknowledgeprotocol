@@ -87,12 +87,12 @@ class Node(
     }
 
     val budget = Budget()
-    val reputation = HashMap<String, Double>()       // peer → EWMA reliability
-    val hooks = HashMap<String, (Packet) -> Unit>()  // test seams (e.g. "pre_align")
+    val reputation = java.util.concurrent.ConcurrentHashMap<String, Double>()       // peer → EWMA reliability
+    val hooks = java.util.concurrent.ConcurrentHashMap<String, (Packet) -> Unit>()  // test seams (e.g. "pre_align")
     var hub: Hub? = null
 
-    private val jtiCache = HashSet<String>()         // replay protection (C2 / REQ-S-02)
-    private val mappingCache = HashMap<String, Double>()
+    private val jtiCache = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())         // replay protection (C2 / REQ-S-02)
+    private val mappingCache = java.util.concurrent.ConcurrentHashMap<String, Double>()
     private var verifier: D2Verifier = LexicalVerifier()
 
     // -- validation pipeline (every inbound packet, v0.4 §Convergence) ----------

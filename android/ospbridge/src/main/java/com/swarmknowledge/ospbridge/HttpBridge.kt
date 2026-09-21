@@ -95,7 +95,7 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
                 val body = headers["content-length"]?.toIntOrNull()?.let { n -> readBody(ins, n) } ?: ""
 
                 val authorized = headers["authorization"] == "Bearer ${service.token}"
-                if (!authorized && path != "/osp/status") {
+                if (!authorized && path != "/osp/status" && path != "/osp/packet") {
                     respond(s, 401, mapOf("error" to "unauthorized"))
                     return
                 }
