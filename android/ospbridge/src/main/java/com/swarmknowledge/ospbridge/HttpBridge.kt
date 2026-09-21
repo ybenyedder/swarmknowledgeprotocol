@@ -14,7 +14,8 @@ import java.util.concurrent.Executors
  * Minimal LAN HTTP bridge for the OSP node — hand-rolled on ServerSocket, no
  * third-party server (REQ-NF-01 spirit, no extra AARs on a constrained device).
  *
- * Routes (all require `Authorization: Bearer <token>` except /osp/status):
+ * Routes (all require the link token under either spelling —
+ * `Authorization: Bearer` or `x-api-token` — except /osp/status):
  *   GET  /osp/status           node + engine status (no secrets)
  *   GET  /osp/endpoint.json    contract consumed by the PC LLMProviderFileAdapter
  *   GET  /v1/models            OpenAI-compatible model list
@@ -94,8 +95,13 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
                 }
                 val body = headers["content-length"]?.toIntOrNull()?.let { n -> readBody(ins, n) } ?: ""
 
-                val authorized = headers["authorization"] == "Bearer ${service.token}"
-                if (!authorized && path != "/osp/status" && path != "/osp/packet") {
+                // Peers send the link secret under either header spelling
+                // (HttpHub sets both): accept both instead of opening any
+                // route — /osp/packet included — to unauthenticated traffic.
+                // Packet HMAC alone is no gate: it uses the public dev secret.
+                val authorized = headers["authorization"] == "Bearer ${service.token}" ||
+                    headers["x-api-token"] == service.token
+                if (!authorized && path != "/osp/status") {
                     respond(s, 401, mapOf("error" to "unauthorized"))
                     return
                 }

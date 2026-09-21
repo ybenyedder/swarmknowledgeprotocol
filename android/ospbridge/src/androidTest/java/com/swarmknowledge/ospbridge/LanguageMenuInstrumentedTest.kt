@@ -49,21 +49,34 @@ class LanguageMenuInstrumentedTest {
         )
     }
 
-    /** Waits for the app UI, then for the toolbar overflow button.
-     *  The button's content description is appcompat-localized, so after a
-     *  switch to French it reads "Options supplémentaires" (One UI) or
-     *  "Plus d'options" (AOSP) — match any known label. */
+    /** The overflow button's content description is appcompat-localized:
+     *  "More options" (EN), "Plus d'options" (AOSP FR) or "Options
+     *  supplémentaires" (One UI FR), plus the zh/ar labels the app ships.
+     *  Exact alternation on purpose — a loose match could grab another node. */
     private val overflowDesc = java.util.regex.Pattern.compile(
-        ".*(options|plus).*", java.util.regex.Pattern.CASE_INSENSITIVE
+        "More options|Plus d'options|Options supplémentaires|更多选项|更多選項|خيارات إضافية"
     )
 
-    private fun overflowButton(timeoutMs: Long = 10_000): androidx.test.uiautomator.UiObject2? {
+    /** Texts of the overflow popup entries, in the locales the tests drive. */
+    private val overflowEntries = java.util.regex.Pattern.compile("Help|Language|Langue")
+
+    /** Opens the toolbar overflow: click the appcompat button under any of its
+     *  localized content descriptions, falling back to the hardware menu key
+     *  (appcompat routes KEYCODE_MENU to the same popup). If neither path
+     *  opens a menu, dump the hierarchy and fail naming the step. */
+    private fun openOverflow(step: String, timeoutMs: Long = 10_000) {
         device.wait(Until.hasObject(By.desc(overflowDesc)), timeoutMs)
         val btn = device.findObject(By.desc(overflowDesc))
-        if (btn == null) {
-            device.pressMenu() // Fallback to hardware menu button if UI element is not found
+        if (btn != null) btn.click() else device.pressMenu()
+        if (device.wait(Until.hasObject(By.text(overflowEntries)), 2_000) == null) {
+            val f = java.io.File(
+                InstrumentationRegistry.getInstrumentation().targetContext.externalCacheDir,
+                "ui_dump.xml"
+            )
+            device.dumpWindowHierarchy(f)
+            println("UI HIERARCHY DUMP:\n${f.readText()}")
+            org.junit.Assert.fail("overflow menu did not open at step: $step")
         }
-        return btn
     }
 
     private fun tapText(text: String, timeoutMs: Long = 5_000): Boolean {
@@ -107,8 +120,7 @@ class LanguageMenuInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java)
         device.wait(Until.hasObject(By.text("Start node")), 15_000)
 
-        val overflow = overflowButton()
-        overflow?.click()
+        openOverflow("help dialog test")
         assertTrue("Help entry missing", tapText("Help"))
 
         // The help dialog renders the localized title and body.
@@ -127,8 +139,7 @@ class LanguageMenuInstrumentedTest {
         device.wait(Until.hasObject(By.text("Start node")), 15_000)
 
         // Toolbar overflow → Language → Français
-        val overflow = overflowButton()
-        overflow?.click()
+        openOverflow("language switch")
         assertTrue("Language entry missing", tapText("Language"))
         assertTrue("Français entry missing", tapText("Français"))
 
@@ -137,7 +148,7 @@ class LanguageMenuInstrumentedTest {
         assertNotNull("UI should render in French after the switch", french)
 
         // Restore through the same path: Language → System default.
-        overflowButton()?.click()
+        openOverflow("restore to system locale")
         assertTrue(tapText("Langue"))
         assertTrue(tapText("Valeur du système"))
         val restored = device.wait(Until.hasObject(By.text("Start node")), 15_000)
