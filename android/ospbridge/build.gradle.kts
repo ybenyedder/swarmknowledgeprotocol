@@ -13,7 +13,7 @@ android {
         applicationId = "com.tree4five.osp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
+        versionCode = 10
         versionName = "0.6.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

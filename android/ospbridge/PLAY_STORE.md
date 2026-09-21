@@ -118,7 +118,7 @@ paste the link in App content → Privacy policy).
 - **Privacy policy URL**: required (host PRIVACY_POLICY.md anywhere
   public, e.g. GitHub Pages / a tree4five site page).
 
-### Release notes (v0.6.4 — versionCode 5)
+### Release notes (v0.6.4 — versionCode 10)
 
 ```
 Stability and security fixes — no protocol change.
