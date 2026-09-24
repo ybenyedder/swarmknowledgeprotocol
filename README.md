@@ -175,7 +175,8 @@ the lone responder cannot ground an answer.
 
 | Surface | Language | Entry points |
 |---|---|---|
-| MCP server + CLI | Python (stdlib only, REQ-NF-01) | `mcp/mcp_server.py`, `mcp/osp_cli.py` |
+| MCP server + CLI + **node** | Python (stdlib only, REQ-NF-01) | `mcp/mcp_server.py`, `mcp/osp_cli.py`, `mcp/osp_node.py` |
+| Linux node + web console | Kotlin/JVM (same `osp-lite` core, zero-dependency) | `linux/ospnode` → `java -jar ospnode-all.jar` (Annex D.1) |
 | Android library + app | Kotlin, zero-dependency | `android/osp-lite`, `android/ospbridge` (AIDL + HTTP + OSP-over-HTTP) |
 | whatsapp-bot peer | JavaScript (ESM, zero-dependency) | `osp/core.mjs`, `/osp/packet`, `/osp/query` |
 
@@ -334,9 +335,10 @@ a convergence mode of 3.1.8.
 
 | Suite | Scope | Status |
 |---|---|---|
-| `mcp/tests/` (Python, offline, deterministic — REQ-NF-03) | core convergence modes, firewall, budgets, discovery TOFU/replay, MCP surface | 36/36 |
+| `mcp/tests/` (Python, offline, deterministic — REQ-NF-03) | core convergence modes, firewall, budgets, discovery TOFU/replay, MCP surface, `osp_node` HTTP bridge | 44/44 |
 | `osp/core.test.mjs` (JavaScript) | wire parity with Python (embed, similarity, `pyDouble`, canonical JSON, sealed packets), negotiation | 13/13 |
 | `android/osp-lite` JVM tests (Kotlin) | protocol core, discovery Q8, mini-JSON, cross-language interop vectors | 38/38 |
+| `linux/ospnode` JVM tests (Kotlin) | Linux HTTP surface: auth double-header, teach → RESOLVED, forged-packet silence, ospbridge peer format | 7/7 |
 | Property/fuzz (L5, planned) | differential serialisation, adversarial providers | `[4]` test plan |
 
 ### 7.2 Field validation (informative)
@@ -365,10 +367,15 @@ swarmknowledge_protocol/
 │   ├── discovery.py                 lease directory, TOFU, replay
 │   ├── mcp_server.py                MCP stdio server
 │   ├── osp_cli.py                   CLI: status / query / teach / peers / packet
+│   ├── osp_node.py                  self-hosted node: HTTP bridge + web console
 │   └── tests/                       conformance suite
 └── android/                         Kotlin library + Android app
-    ├── osp-lite/                    protocol core (JVM tests included)
+    ├── osp-lite/                    protocol core (JVM tests included) — shared
+    │                                by the Android app and the Linux node
     └── ospbridge/                   foreground service: AIDL + HTTP bridge
+
+linux/                               the same core, headless (see Annex D.1)
+└── ospnode/                         JVM node: HTTP bridge + web console + CLI
 ```
 
 The JavaScript core lives in the whatsapp-bot repository (`osp/core.mjs`,
@@ -383,14 +390,24 @@ cd mcp && python3 -m unittest discover tests -v
 # start the MCP server over stdio (wire into any MCP client)
 python3 mcp_server.py
 
-# talk to a running OSP node (bridge app or whatsapp-bot)
+# compile and run the Linux node (Annex D.1) — serve + web console
+cd ../android && ./gradlew :ospnode:fatJar
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar --id lan-node --corpus ~/knowledge/
+
+# …or the stdlib-only Python twin — no JDK, same routes, same wire
+python3 mcp/osp_node.py --id py-node --corpus ~/knowledge/
+
+# talk to a running OSP node (Linux node, bridge app or whatsapp-bot)
 python3 osp_cli.py --url http://<node>:<port> --token <link-secret> status
 python3 osp_cli.py --url http://<node>:<port> --token <link-secret> \
         query --text "why does hydraulic pump failure happen" --tier 0
 
 # Android: install the ospbridge debug APK, start the OspService foreground
-# service, then peer it with a remote node via POST /osp/peers
+# service, then peer it with a remote node via POST /osp/peers (Annex D.3)
 ```
+
+Platform guides: **Linux** → Annex D.1 and `linux/ospnode/README.md` ·
+**Web** → Annex D.2 · **Android** → Annex D.3 and `android/README.md`.
 
 ## Annex C (informative): document history
 
@@ -399,3 +416,96 @@ python3 osp_cli.py --url http://<node>:<port> --token <link-secret> \
 | v0.4 | 2026-09 | full profile `[1]` |
 | v0.5 | 2026-09 | Lite edge profile `[2]` |
 | v0.6 | 2026-09-17 | Connect requirements `[3]`, architecture `[4]`, three interoperable implementations, live chain validated |
+| v0.6.1 | 2026-09-24 | Linux nodes — `linux/ospnode` (Kotlin/JVM) and its stdlib twin `mcp/osp_node.py`: the cores served headless with an HTTP bridge, web console and CLI; platform guides in Annex D |
+
+## Annex D (informative): platform guides — Linux, Web, Android
+
+All surfaces speak the same wire (clause 5.1): sealed packets on `/osp/packet`,
+link secrets as `x-api-token` / `Authorization: Bearer`, outcomes with the
+same trace and convergence modes. Any two nodes below peer without bridging
+code.
+
+### D.1 Linux — compile and run `ospnode`
+
+```bash
+# build (JDK ≥ 17; the build reuses the android/ wrapper so osp-lite is
+# compiled exactly once for both platforms)
+cd android && ./gradlew :ospnode:fatJar
+# → linux/ospnode/build/libs/ospnode-all.jar   (self-contained, ~2 MB)
+
+# serve a node: id, port, link secret, knowledge corpus
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar \
+     --id lan-node --port 8090 --token "$OSP_TOKEN" --corpus ~/knowledge/
+
+# a real model behind the node (N3) — same env contract as mcp/providers.py
+export OSP_PROVIDER_URL=http://localhost:11434/v1  OSP_PROVIDER_MODEL=gemma4:12b
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar --provider openai
+
+# one-shot negotiation from the shell (exit 0 only on RESOLVED)
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar \
+     --corpus ~/knowledge/ --query "why does hydraulic pump failure happen" --tier 0
+```
+
+Full option table, the systemd user-service unit and the test suite are in
+`linux/ospnode/README.md`.
+
+**Two interchangeable implementations.** `mcp/osp_node.py` is the stdlib-only
+Python twin of this node — identical flags, routes, console and wire, built on
+the Python reference core instead of `osp-lite`. Pick by runtime constraints
+(a JDK ≥ 17 box vs a bare `python3`), and mix freely: a Kotlin origin
+negotiates with the Python responder and vice-versa over sealed packets, which
+is clause 5.2.1's cross-language parity exercised live:
+
+```bash
+python3 mcp/osp_node.py --id py-node --port 18201 --token "$T" --corpus ~/knowledge/
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar --query "…" --tier 0 \
+     --peer py-node=http://localhost:18201 --peer-token py-node="$T"
+```
+
+### D.2 Web — browser console and HTTP clients
+
+The Linux node serves a **zero-install console** at `http://<node>:8090/`:
+paste the link token once, then query the swarm (mode, answer, groundedness
+and the full PROPOSE → BID → ALIGN → RESOLVE trace rendered), teach chunks and
+manage peers. Everything the console does is plain `fetch` against the
+documented routes, so any web client is one `POST` away:
+
+```js
+const r = await fetch("http://<node>:8090/osp/query", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "x-api-token": TOKEN },
+  body: JSON.stringify({ query: "why does hydraulic pump failure happen", tier: 0 }),
+});
+const { outcome } = await r.json();   // outcome.mode, outcome.answer, outcome.groundedness
+```
+
+For machine clients the same routes take curl (D.1, §4 of
+`linux/ospnode/README.md`) and the Python CLI of Annex B. The JavaScript
+implementation itself lives in the whatsapp-bot repository (`osp/core.mjs`) —
+point a peer at its `/osp/packet` endpoint to negotiate with it from the
+browser's node.
+
+### D.3 Android — the ospbridge app
+
+```bash
+./gradlew :ospbridge:assembleDebug
+adb install -r ospbridge/build/outputs/apk/debug/ospbridge-debug.apk
+adb shell am start-foreground-service -n com.swarmknowledge.ospbridge/.OspService
+```
+
+The app runs the protocol as an N1 origin + N2 responder (generation through
+the on-device LLMProvider engine; without it every query honestly abstains,
+REQ-F-04). Peering with a Linux node, tablet side:
+
+```bash
+adb forward tcp:18090 tcp:8090
+curl -H "x-api-token: $TABLET_TOKEN" localhost:18090/osp/peers \
+     -d '{"peers": {"lan-node": {"url": "http://<linux-lan-ip>:8090", "token": "'"$OSP_TOKEN"'"}}}'
+curl -H "x-api-token: $TABLET_TOKEN" localhost:18090/osp/query \
+     -d '{"query": "why does hydraulic pump failure happen", "tier": 0}'
+```
+
+Reverse direction — the Linux node adds the tablet with `--peer
+tablet=http://<tablet-lan-ip>:8090 --peer-token tablet=<tablet-secret>`. The
+AIDL surface (`IOspService`) lets on-device host apps submit queries without
+HTTP. Details and the requirement traceability table: `android/README.md`.

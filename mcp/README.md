@@ -10,10 +10,13 @@ mcp/
 ├── osp_core.py        protocol core: packets, gas, path-vector, jti, contraction,
 │                      quorum + provenance diversity, firewall, budgets, node classes
 ├── providers.py       D3 bindings: EchoGrounded/Confabulating (dev stubs),
-│                      OpenAICompat (remote), LLMProviderFileAdapter (../LLMprovider)
+│                      OpenAICompat (remote), Ollama, LLMProviderFileAdapter
 ├── discovery.py       lease-based node directory, TOFU pinning, replay protection
 ├── mcp_server.py      MCP over stdio (newline-delimited JSON-RPC 2.0) + tools
-└── tests/             24 conformance tests — one per requirement criterion
+├── osp_cli.py         client for any OSP node's HTTP bridge (status/query/teach/…)
+├── osp_node.py        self-hosted node: HTTP bridge + web console + one-shot CLI
+│                      (the stdlib twin of ../linux/ospnode — same routes, same wire)
+└── tests/             conformance tests — one per requirement criterion
 ```
 
 ## Run
@@ -24,7 +27,19 @@ python3 -m unittest discover tests -v
 
 # server over stdio (wire it into any MCP client, e.g. Claude Desktop / harnessdroid)
 python3 mcp_server.py
+
+# run a real OSP node (serve + browser console on :8090)
+python3 osp_node.py --id lan-node --corpus ~/knowledge/
+
+# one-shot negotiation from the shell (exit 0 only on RESOLVED, JSON on stdout)
+python3 osp_node.py --corpus ~/knowledge/ --query "why does hydraulic pump failure happen" --tier 0
 ```
+
+`osp_node.py` peers with the Android app, the whatsapp-bot and the Kotlin node
+over the same sealed-packet wire (`/osp/packet`) — a Kotlin origin resolving
+against this Python responder (and the reverse) is the cross-language parity
+clause 5.2.1 demands, exercised live. See `../linux/ospnode/README.md` for the
+full option table (identical flags) and the peering guide.
 
 ## Configuration (env vars only)
 

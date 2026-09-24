@@ -47,6 +47,23 @@ curl -H "x-api-token: $T" -H "Authorization: Bearer $T" \
 `Authorization`) and a 300 s read timeout — remote generation (ollama on a
 CPU box) legitimately takes tens of seconds.
 
+### Peer with the Linux node (`../linux/ospnode`)
+
+The tablet and a headless Linux node run the **same** `osp-lite` core, so
+peering is just an exchange of URLs and link secrets (guide:
+`../linux/ospnode/README.md`, root README Annex D.3):
+
+```bash
+# tablet → Linux node (the Linux node serves /osp/packet on :8090)
+adb forward tcp:18090 tcp:8090
+curl -H "x-api-token: $T" localhost:18090/osp/peers \
+     -d '{"peers": {"lan-node": {"url": "http://<linux-lan-ip>:8090", "token": "'"$NODE_TOKEN"'"}}}'
+
+# Linux node → tablet (start ospnode with the tablet as a peer)
+java -jar ../linux/ospnode/build/libs/ospnode-all.jar --id lan-node \
+     --peer tablet=http://<tablet-lan-ip>:8090 --peer-token tablet=$T
+```
+
 ## Android requirements and test traceability
 
 | ID | Requirement | Verified by |
