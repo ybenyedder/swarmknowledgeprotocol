@@ -172,7 +172,7 @@ class OspNode:
                                      method="POST", headers=headers)
         try:
             # remote generation (ALIGN/RESOLVE against an LLM) takes minutes
-            with urllib.request.urlopen(req, timeout=300) as r:
+            with urllib.request.urlopen(req, timeout=600) as r:
                 if r.status == 204:
                     return None                      # forged/replayed — silent
                 data = json.loads(r.read() or b"{}")

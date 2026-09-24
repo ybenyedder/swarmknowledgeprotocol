@@ -75,8 +75,11 @@ class LlmBridge(private val context: Context) {
         }
     }
 
-    /** Full generation; blocks until onGenerationComplete or timeout. */
-    fun generate(prompt: String, timeoutS: Long = 180): String {
+    /** Full generation; blocks until onGenerationComplete or timeout.
+     *  Slow hardware (emulated CPU, big quants) legitimately needs minutes —
+     *  an honest completed answer beats a timeout that would surface as an
+     *  RFO "provider failure" at the negotiation layer. */
+    fun generate(prompt: String, timeoutS: Long = 600): String {
         val s = awaitService() ?: throw IllegalStateException("LLMProvider service not bound")
         val text = AtomicReference<String?>(null)
         val done = CountDownLatch(1)

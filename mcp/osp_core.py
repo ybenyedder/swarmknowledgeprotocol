@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -352,10 +353,12 @@ class Node:
         if dist is None:
             dist = round(1.0 - self._retrieval_score(qv)[0], 3)
             if self.d3 is not None and self.budget.charge():
-                try:
-                    self.d3.generate(f"Confirm mapping {src} -> {tgt}", self.rag.chunks[:1])
-                except Exception:
-                    pass   # the confirm text is discarded — the distance is local
+                # fire-and-forget: the confirm text is discarded — the distance
+                # is local. Blocking on generation here stalls the whole
+                # negotiation for the length of a D3 completion.
+                threading.Thread(
+                    target=self._confirm_mapping, args=(src, tgt), daemon=True,
+                ).start()
             self.mapping_cache[key] = dist
         return Packet(
             action=Action.ACK, origin_id=pkt.origin_id, query_id=pkt.query_id,
@@ -363,6 +366,13 @@ class Node:
             trail=pkt.trail + [{"node": self.id, "action": "ALIGN"}],
             payload={"mapping_distance": dist, "source": src, "target": tgt},
         ).seal(self.signer)
+
+    def _confirm_mapping(self, src: str, tgt: str) -> None:
+        """Best-effort D3 confirm — result discarded, never surfaces a failure."""
+        try:
+            self.d3.generate(f"Confirm mapping {src} -> {tgt}", self.rag.chunks[:1])
+        except Exception:
+            pass
 
     def _on_resolve(self, pkt: Packet) -> Packet | None:
         """The single generation (v0.5: generation-once). Abstains if unable."""
@@ -419,6 +429,7 @@ class Node:
 
         # 01 PROPOSE → 02 PRE-BID/BID
         bids = []
+        alias_of: dict[str, str] = {}   # sealed sender id → table alias it answered through
         for node_id in candidates:
             pkt = Packet(
                 action=Action.PROPOSE, origin_id=self.id, query_id=uuid.uuid4().hex[:12],
@@ -428,6 +439,7 @@ class Node:
             reply = self.hub.send(self.id, node_id, pkt)
             if reply and reply.action == Action.BID:
                 bids.append(reply)
+                alias_of[reply.sender] = node_id
                 trace.append({"from": node_id, "action": "BID", "bid": reply.payload["bid"]})
             elif reply and reply.action == Action.RFO:
                 trace.append({"from": node_id, "rfo": reply.payload["reason"]})
@@ -443,6 +455,10 @@ class Node:
         winner = max(capable, key=lambda b: b.payload["bid"])
         prov = winner.payload["provenance"][0]
         dist0 = 1.0 - winner.payload["retrieval_similarity"]
+        # the sealed BID carries the responder's internal id, which need not
+        # equal the table alias it was reached through (Android peers peer under
+        # an alias while their node id is osp-…): route follow-ups by alias
+        to = alias_of.get(winner.sender, winner.sender)
         if "pre_align" in self.hooks:            # test seam: mutate state pre-align
             self.hooks["pre_align"](winner)
         align = Packet(
@@ -450,7 +466,7 @@ class Node:
             sender=self.id, gas=self.cfg.gas,
             payload={"query_vec": list(qv), "source": text, "target": prov["chunk_hash"]},
         ).seal(self.signer)
-        reply = self.hub.send(self.id, winner.sender, align)
+        reply = self.hub.send(self.id, to, align)
         trace.append({"from": winner.sender, "action": "ALIGN"})
         if reply is None or reply.action == Action.RFO:
             if reply is not None:      # the RFO's reason travels in the trace
@@ -472,7 +488,7 @@ class Node:
             sender=self.id, gas=self.cfg.gas,
             payload={"query_vec": list(qv), "query_text": text},
         ).seal(self.signer)
-        reply = self.hub.send(self.id, winner.sender, resolve)
+        reply = self.hub.send(self.id, to, resolve)
         trace.append({"from": winner.sender, "action": "RESOLVE"})
         if reply is None or reply.action == Action.RFO:
             if reply is not None:      # the RFO's reason travels in the trace

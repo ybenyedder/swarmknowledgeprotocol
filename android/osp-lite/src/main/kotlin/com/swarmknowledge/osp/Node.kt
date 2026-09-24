@@ -1,5 +1,7 @@
 package com.swarmknowledge.osp
 
+import kotlin.concurrent.thread
+
 /**
  * OSP node — Kotlin port of the Python reference (`mcp/osp_core.py`), same
  * rules and same wire behavior:
@@ -174,10 +176,15 @@ class Node(
         val dist = mappingCache.getOrPut(key) {
             val d = round3(1.0 - retrievalScore(qv).first)
             if (d3 != null && budget.charge()) {
-                try {
-                    d3.generate("Confirm mapping $src -> $tgt", rag.entries.take(1).map { Evidence(it.hash, it.text) })
-                } catch (_: Exception) {
-                    // the confirm text is discarded — the distance is local
+                // fire-and-forget: the confirm text is discarded — the distance
+                // is local. Blocking on generation here stalls the whole
+                // negotiation for the length of a D3 completion.
+                thread(start = true, isDaemon = true) {
+                    try {
+                        d3.generate("Confirm mapping $src -> $tgt", rag.entries.take(1).map { Evidence(it.hash, it.text) })
+                    } catch (_: Exception) {
+                        // never surfaces a failure
+                    }
                 }
             }
             d
@@ -250,6 +257,7 @@ class Node(
 
         // 01 PROPOSE → 02 PRE-BID/BID
         val bids = ArrayList<Packet>()
+        val aliasOf = HashMap<String, String>()   // sealed sender id → table alias
         for (nodeId in candidates) {
             val pkt = Packet(
                 action = Action.PROPOSE, originId = id, queryId = newId(12),
@@ -261,6 +269,7 @@ class Node(
             when (reply.action) {
                 Action.BID -> {
                     bids.add(reply)
+                    aliasOf[reply.sender.toString()] = nodeId
                     trace.add(mapOf("from" to nodeId, "action" to "BID", "bid" to reply.payload["bid"]))
                 }
                 Action.RFO -> trace.add(mapOf("from" to nodeId, "rfo" to reply.payload["reason"]))
@@ -278,6 +287,10 @@ class Node(
         val winner = capable.maxBy { dbl(it.payload["bid"]) }
         val prov = (winner.payload["provenance"] as List<*>).first() as Map<*, *>
         val dist0 = 1.0 - dbl(winner.payload["retrieval_similarity"])
+        // the sealed BID carries the responder's internal id, which need not
+        // equal the table alias it was reached through (Android peers peer under
+        // an alias while their node id is osp-…): route follow-ups by alias
+        val to = aliasOf[winner.sender] ?: winner.sender
         hooks["pre_align"]?.invoke(winner)      // test seam: mutate state pre-align
         val align = Packet(
             action = Action.ALIGN, originId = id, queryId = winner.queryId,
@@ -288,7 +301,7 @@ class Node(
                 "target" to prov["chunk_hash"],
             ),
         ).seal(signer)
-        val alignReply = hub?.send(id, winner.sender, align)
+        val alignReply = hub?.send(id, to, align)
         trace.add(mapOf("from" to winner.sender, "action" to "ALIGN"))
         if (alignReply == null || alignReply.action == Action.RFO) {
             alignReply?.let { trace.add(mapOf("from" to winner.sender, "rfo" to it.payload["reason"])) }
