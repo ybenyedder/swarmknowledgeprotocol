@@ -53,7 +53,9 @@ def check_host(host: str, timeout: float = 90.0) -> dict:
             models = ollama.list_models()
         except Exception as exc:
             return {"target": host, "ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        model = os.environ.get("OSP_PROVIDER_MODEL", "") or (models[0] if models else "")
+        model = os.environ.get("OSP_PROVIDER_MODEL", "")
+        if not model and models:
+            model = ollama._pick(models)
         result = {"target": host, "ok": True, "kind": "ollama", "models": models}
         if model:
             try:

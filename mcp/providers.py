@@ -144,26 +144,58 @@ class OllamaProvider(OpenAICompatProvider):
 
     Ollama exposes an OpenAI-compatible API under /v1 and native model listing
     under /api/tags. The base URL is normalized so LAN addresses like
-    `192.168.1.194:11434` work as-is."""
+    `192.168.1.194:11434` work as-is. With no explicit model, /api/tags picks
+    the right one: a general-purpose tuning — code/vision specializations
+    ground poorly on prose, and the name alone lies (`qwen-opti` is a coder
+    child, `parent_model` tells the truth) — smallest parameter count first,
+    because LAN latency beats marginal quality for grounded answers."""
     name = "ollama"
 
-    def __init__(self, host_url: str, model: str = "", timeout_s: float = 120.0):
+    # specializations that answer code/vision prompts, not grounded prose —
+    # matched against the model name AND its parent_model
+    _SPECIALIST = re.compile(r"coder|codeur|vision|embed|whisper|guard", re.I)
+    _MAX_PARAMS_B = 16.0   # bigger quants are too slow for interactive queries
+
+    def __init__(self, host_url: str, model: str = "", timeout_s: float = 300.0):
+        # 300 s default: the first request on a cold Ollama loads the model
         base = ensure_scheme(host_url)
         if not base.endswith("/v1"):
             base += "/v1"
         super().__init__(base, model, "", timeout_s)
         self.tags_url = base[: -len("/v1")] + "/api/tags"
 
-    def list_models(self) -> list[str]:
+    def list_models(self) -> list[dict]:
         with urllib.request.urlopen(self.tags_url, timeout=self.timeout_s) as resp:
-            return [m["name"] for m in json.loads(resp.read()).get("models", [])]
+            return json.loads(resp.read()).get("models", [])
+
+    @staticmethod
+    def _params_b(m: dict) -> float:
+        try:
+            ps = m.get("details", {}).get("parameter_size", "")
+            return float(ps.rstrip("Bb")) if ps else 0.0
+        except (ValueError, AttributeError):
+            return 0.0
+
+    def _is_specialist(self, m: dict) -> bool:
+        parent = m.get("details", {}).get("parent_model", "") or ""
+        return bool(self._SPECIALIST.search(m["name"])
+                    or self._SPECIALIST.search(parent))
+
+    def _pick(self, models: list[dict]) -> str:
+        pool = [m for m in models if not self._is_specialist(m)]
+        pool = pool or models
+        sized = [m for m in pool
+                 if 0.0 < self._params_b(m) <= self._MAX_PARAMS_B]
+        pool = sized or pool
+        # smallest first (unknown size sorts last), listing order breaks ties
+        pool = sorted(pool, key=lambda m: self._params_b(m) or 1e9)
+        return pool[0]["name"] if pool else "fastmodel:latest"
 
     def _resolve_model(self) -> str:
         if self.model:
             return self.model
         try:
-            models = self.list_models()
-            self.model = models[0] if models else "fastmodel:latest"
+            self.model = self._pick(self.list_models())
         except Exception:
             self.model = "fastmodel:latest"   # offline → resolved lazily again
         return self.model

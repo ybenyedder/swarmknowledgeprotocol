@@ -40,6 +40,8 @@ import time
 import urllib.error
 import urllib.request
 
+from providers import OllamaProvider   # noqa: E402 — HERE is on sys.path at runtime
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 NODE = os.path.join(HERE, "osp_node.py")
 
@@ -59,7 +61,7 @@ DOMAINS = [
      "Solar inverters shut down at night and restart automatically at sunrise.",
      "how does a solar inverter behave overnight"),
     ("solar-inverter-b",
-     "A solar inverter converts the DC output of the panels into grid frequency AC.",
+     "At night the solar inverter switches to standby and powers back on at dawn.",
      "how does a solar inverter behave overnight"),  # same query: quorum pair
 ]
 UNKNOWN_QUERY = "how does quantum entanglement distribute encryption keys"
@@ -86,6 +88,8 @@ def set_table(vm: Vm, ordered: list[str]):
 
 
 ALL_NODES: list = []   # Vm + AndroidNode handles, filled by main()
+QUERY_TIMEOUT = 60.0   # client timeout for the VM query phases; raised when
+                       # --ollama routes generation to a real LAN model
 
 
 def http(method: str, url: str, token: str | None = None, body: dict | None = None,
@@ -165,9 +169,14 @@ class Vm:
                 self.proc.kill()
 
 
-def spawn_vms(n: int, log_dir: str) -> list[Vm]:
+def spawn_vms(n: int, log_dir: str, ollama: str | None = None) -> list[Vm]:
     vms: list[Vm] = []
     os.makedirs(log_dir, exist_ok=True)
+    env = dict(os.environ)
+    if ollama:
+        # real generation rung for the VMs (N3); osp_node reads these itself
+        env["OSP_PROVIDER_URL"] = ollama
+        env["OSP_PROVIDER_KIND"] = "ollama"
     for i in range(n):
         name, chunk, _q = DOMAINS[i % len(DOMAINS)]
         port, token = free_port(), os.urandom(12).hex()
@@ -175,7 +184,7 @@ def spawn_vms(n: int, log_dir: str) -> list[Vm]:
         proc = subprocess.Popen(
             [sys.executable, NODE, "--id", name, "--port", str(port),
              "--token", token],
-            cwd=HERE, stdout=log, stderr=log)
+            cwd=HERE, stdout=log, stderr=log, env=env)
         vms.append(Vm(name, proc, port, token))
     for vm in vms:
         assert vm.proc.poll() is None, f"{vm.name} died at startup"
@@ -229,7 +238,7 @@ def phase_routing(vms: list[Vm], r: Report) -> None:
             topic, _chunk, query = DOMAINS[vms.index(dst) % len(DOMAINS)]
             set_table(src, [dst.name] + [o.name for o in others
                                          if o.name not in (src.name, dst.name)])
-            out = src.query(query, tier=0)
+            out = src.query(query, tier=0, timeout=QUERY_TIMEOUT)
             ok = out.get("mode") == "RESOLVED"
             r.check(ok, f"{src.name} → {topic} (tier 0) resolves",
                     f"mode={out.get('mode')} g={out.get('groundedness')}")
@@ -255,7 +264,7 @@ def phase_quorum(vms: list[Vm], r: Report) -> None:
     rest = [o.name for o in ALL_NODES
             if o.name not in (src.name, vms[3].name, vms[4].name)]
     set_table(src, [vms[3].name, vms[4].name] + rest)
-    out = src.query(DOMAINS[3][2], tier=1)
+    out = src.query(DOMAINS[3][2], tier=1, timeout=QUERY_TIMEOUT)
     ok = r.check(out.get("mode") == "RESOLVED",
                  f"{src.name} → solar-inverter quorum (tier 1) resolves",
                  f"mode={out.get('mode')} g={out.get('groundedness')}")
@@ -279,7 +288,7 @@ def phase_honesty(vms: list[Vm], r: Report) -> None:
     src, candid = vms[0], vms[4]
     set_table(src, [candid.name] + [o.name for o in ALL_NODES
                                     if o.name not in (src.name, candid.name)])
-    out = src.query(UNKNOWN_QUERY, tier=0)
+    out = src.query(UNKNOWN_QUERY, tier=0, timeout=QUERY_TIMEOUT)
     mode = out.get("mode")
     r.check(mode is not None and mode != "RESOLVED" and mode != "HTTP_ERROR",
             f"unknown topic → honest abstention (no competent evidence)",
@@ -298,14 +307,19 @@ def main() -> int:
                          "(repeatable)")
     ap.add_argument("--keep", action="store_true",
                     help="leave the VM processes running after the run")
+    ap.add_argument("--ollama", default=None, metavar="HOST:11434",
+                    help="use this LAN Ollama server as the VMs' D3 provider "
+                         "(real LLM generation instead of the echo provider); "
+                         "the model is picked from /api/tags")
     args = ap.parse_args()
     given = dict(t.split("=", 1) for t in args.android_token)
 
     n = max(2, args.nodes)
     log_dir = os.path.join(HERE, ".nonreg-logs")
-    vms = spawn_vms(n, log_dir)
+    vms = spawn_vms(n, log_dir, ollama=args.ollama)
     print(f"swarm: {n} VMs up " +
-          " ".join(f"{v.name}@{v.port}" for v in vms))
+          " ".join(f"{v.name}@{v.port}" for v in vms) +
+          (f" — D3 via ollama://{args.ollama}" if args.ollama else ""))
     r = Report()
     androids: list[AndroidNode] = []
     try:
@@ -317,6 +331,20 @@ def main() -> int:
                               for a in androids})
         for i, vm in enumerate(vms):
             teach(vm, DOMAINS[i % len(DOMAINS)][1])
+
+        if args.ollama:
+            # a cold Ollama loads the model on the first request (minutes on a
+            # big quant) — warm it now so phase timings measure the protocol,
+            # not the model load, and give the phases a matching client budget
+            global QUERY_TIMEOUT
+            QUERY_TIMEOUT = 300.0
+            warm = OllamaProvider(args.ollama)
+            print(f"ollama: model {warm._resolve_model()} — warming up …")
+            try:
+                warm.generate("warmup", [])
+                print("ollama: warm")
+            except Exception as e:   # noqa: BLE001 — phases will report honestly
+                print(f"ollama: warmup failed ({type(e).__name__}: {e})")
 
         print("\nphase 1 — routing (tier 0): the knowledge owner answers")
         phase_routing(vms, r)
@@ -526,13 +554,13 @@ def phase_android(android: AndroidNode, vms: list[Vm], r: Report) -> None:
     src = vms[0]
     others = [o.name for o in ALL_NODES if o.name not in (src.name, android.name)]
     set_table(src, [android.name] + others)
-    out = src.query(ANDROID_DOMAIN[2], tier=0, timeout=180)   # on-device gen
+    out = src.query(ANDROID_DOMAIN[2], tier=0, timeout=900)   # on-device gen is slow (real model)
     mode = out.get("mode")
     trace = out.get("trace", [])
     r.check(mode in ("RESOLVED", "MISMATCH", "NO_QUORUM"),
             f"app as responder: {src.name} → {ANDROID_DOMAIN[0]} "
             f"ends in an explicit outcome",
-            f"mode={mode} g={out.get('groundedness')}")
+            f"mode={mode} detail={out.get('detail')} g={out.get('groundedness')}")
     # the BID hop is keyed by the table alias; the ALIGN hop carries the app's
     # sealed sender id (its internal node id) — both prove a real exchange
     bid = any(h.get("action") == "BID" and h.get("from") == android.name

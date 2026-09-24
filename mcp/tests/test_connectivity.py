@@ -32,6 +32,35 @@ class TestOllamaProvider(unittest.TestCase):
         with mock.patch.object(p, "list_models", side_effect=OSError("no route")):
             self.assertEqual(p._resolve_model(), "fastmodel:latest")
 
+    def test_model_selection_skips_specialists_and_big_quants(self):
+        """No explicit model → /api/tags picks a general tuning ≤ 16B, smallest
+        first: the name alone lies (`qwen-opti` is a coder child), so
+        parent_model is checked too."""
+        p = OllamaProvider("host:11434", model="")
+        models = [   # the real 192.168.1.194:11434 listing, same order
+            {"name": "qwen-opti:latest", "details": {
+                "parameter_size": "7.6B", "parent_model": "qwen2.5-coder:7b"}},
+            {"name": "qwen2.5-coder:7b", "details": {"parameter_size": "7.6B"}},
+            {"name": "gemma-opti:latest", "details": {
+                "parameter_size": "11.9B", "parent_model": "gemma4:12b"}},
+            {"name": "gemma4:12b", "details": {"parameter_size": "11.9B"}},
+            {"name": "vision:latest", "details": {
+                "parameter_size": "11.9B", "parent_model": "gemma4:12b"}},
+            {"name": "codeur:latest", "details": {
+                "parameter_size": "14.8B", "parent_model": "qwen2.5-coder:14b"}},
+            {"name": "qwen2.5-coder:14b", "details": {"parameter_size": "14.8B"}},
+            {"name": "fastmodel:latest", "details": {
+                "parameter_size": "7.6B", "parent_model": "qwen2.5:7b"}},
+            {"name": "bestmodel:latest", "details": {
+                "parameter_size": "27.3B", "parent_model": "qwen3.8:latest"}},
+        ]
+        with mock.patch.object(p, "list_models", return_value=models):
+            self.assertEqual(p._resolve_model(), "fastmodel:latest")
+
+    def test_explicit_model_wins_over_selection(self):
+        p = OllamaProvider("host:11434", model="fastmodel:latest")
+        self.assertEqual(p._resolve_model(), "fastmodel:latest")
+
     def test_remote_semantics(self):
         """Ollama on the LAN is an N3 (remote) provider — REQ-F-03."""
         self.assertTrue(OllamaProvider("host:11434").remote)
