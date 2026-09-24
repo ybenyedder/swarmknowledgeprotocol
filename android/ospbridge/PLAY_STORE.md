@@ -50,7 +50,7 @@ WHO IS IT FOR
   conformance tests at the project repository.
 
 HONEST POSTURE
-Early release (v0.6.5), developer-oriented: peering is manual (URL +
+Early release (v0.6.6), developer-oriented: peering is manual (URL +
 token), packets are signed and TTL/gas-bounded, and a production
 Ed25519 + TLS signer is the committed next step.
 
@@ -117,6 +117,22 @@ paste the link in App content → Privacy policy).
   declared usage: peering with the user's own devices.
 - **Privacy policy URL**: required (host PRIVACY_POLICY.md anywhere
   public, e.g. GitHub Pages / a tree4five site page).
+
+### Release notes (v0.6.6 — versionCode 12)
+
+```
+Cross-device reliability fixes — no new permission, no protocol change.
+• Fixed swarm negotiations ending in "alignment refused" when a peer's
+  internal node id differs from the name it was peered under (Android
+  peers peer under a friendly name while their sealed packets carry an
+  internal id). Follow-up packets now route back to the peer that
+  actually answered.
+• The alignment step no longer blocks on on-device model generation —
+  its result is discarded, so on slow hardware the negotiation no
+  longer stalls for the length of a completion.
+• Longer on-device generation window so real models on slower devices
+  can finish instead of surfacing as a provider failure.
+```
 
 ### Release notes (v0.6.5 — versionCode 11)
 
