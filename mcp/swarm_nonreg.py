@@ -549,15 +549,18 @@ def phase_android(android: AndroidNode, vms: list[Vm], r: Report) -> None:
     # 1. app as responder: a VM asks the topic only the app was taught.
     #    A sealed BID from the app (verified by the VM's core) proves the
     #    wire; RESOLVED additionally proves the on-device generation passed
-    #    the alignment + groundedness firewalls — a MISMATCH on a small
-    #    emulated model is an honest firewall outcome, not a wire failure.
+    #    the alignment + groundedness firewalls. The other accepted modes are
+    #    the honesty properties doing their job on weak on-device models:
+    #    MISMATCH (alignment refused), NO_QUORUM (provider could not
+    #    generate) and REJECTED (origin firewall refused an ungrounded
+    #    answer — e.g. a small quant replying with degenerate repetition).
     src = vms[0]
     others = [o.name for o in ALL_NODES if o.name not in (src.name, android.name)]
     set_table(src, [android.name] + others)
     out = src.query(ANDROID_DOMAIN[2], tier=0, timeout=900)   # on-device gen is slow (real model)
     mode = out.get("mode")
     trace = out.get("trace", [])
-    r.check(mode in ("RESOLVED", "MISMATCH", "NO_QUORUM"),
+    r.check(mode in ("RESOLVED", "MISMATCH", "NO_QUORUM", "REJECTED"),
             f"app as responder: {src.name} → {ANDROID_DOMAIN[0]} "
             f"ends in an explicit outcome",
             f"mode={mode} detail={out.get('detail')} g={out.get('groundedness')}")
@@ -574,6 +577,10 @@ def phase_android(android: AndroidNode, vms: list[Vm], r: Report) -> None:
     elif mode == "MISMATCH":
         print("  (info) alignment firewall refused the emulated model's "
               "confirm — wire negotiation itself succeeded")
+    elif mode == "REJECTED":
+        print("  (info) origin firewall refused the app's answer as "
+              "ungrounded — the on-device model needs attention, the "
+              "protocol did its job")
 
     # 2. app as origin: ask through the app. Kotlin's peer map is unordered
     #    (unlike Python's insertion order), so k=1 tier 0 would pick an
