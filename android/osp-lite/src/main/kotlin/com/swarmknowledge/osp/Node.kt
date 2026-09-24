@@ -173,8 +173,13 @@ class Node(
         val key = "${pkt.queryId}|${pkt.originId}|$src|$tgt"
         val dist = mappingCache.getOrPut(key) {
             val d = round3(1.0 - retrievalScore(qv).first)
-            if (d3 != null && budget.charge())
-                d3.generate("Confirm mapping $src -> $tgt", rag.entries.take(1).map { Evidence(it.hash, it.text) })
+            if (d3 != null && budget.charge()) {
+                try {
+                    d3.generate("Confirm mapping $src -> $tgt", rag.entries.take(1).map { Evidence(it.hash, it.text) })
+                } catch (_: Exception) {
+                    // the confirm text is discarded — the distance is local
+                }
+            }
             d
         }
         return Packet(
@@ -285,8 +290,10 @@ class Node(
         ).seal(signer)
         val alignReply = hub?.send(id, winner.sender, align)
         trace.add(mapOf("from" to winner.sender, "action" to "ALIGN"))
-        if (alignReply == null || alignReply.action == Action.RFO)
+        if (alignReply == null || alignReply.action == Action.RFO) {
+            alignReply?.let { trace.add(mapOf("from" to winner.sender, "rfo" to it.payload["reason"])) }
             return outcome(Mode.MISMATCH, trace, "alignment refused", origin = id, budgetLeft = budget.left)
+        }
         val dist1 = dbl(alignReply.payload["mapping_distance"])
         // C3 with C = 1: the first align is a lock-in — the responder's evidence
         // may not drift beyond tolerance between BID and ALIGN. The γ-contraction
@@ -307,9 +314,11 @@ class Node(
         ).seal(signer)
         val reply = hub?.send(id, winner.sender, resolve)
         trace.add(mapOf("from" to winner.sender, "action" to "RESOLVE"))
-        if (reply == null || reply.action == Action.RFO)
+        if (reply == null || reply.action == Action.RFO) {
+            reply?.let { trace.add(mapOf("from" to winner.sender, "rfo" to it.payload["reason"])) }
             return outcome(Mode.NO_QUORUM, trace, "winner could not generate",
                 origin = id, budgetLeft = budget.left)
+        }
 
         // 05 VERIFY — firewall L2 (origin-side, hash-addressable) + reputation
         val answer = reply.payload["answer"].toString()

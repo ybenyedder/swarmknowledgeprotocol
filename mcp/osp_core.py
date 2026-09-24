@@ -352,7 +352,10 @@ class Node:
         if dist is None:
             dist = round(1.0 - self._retrieval_score(qv)[0], 3)
             if self.d3 is not None and self.budget.charge():
-                self.d3.generate(f"Confirm mapping {src} -> {tgt}", self.rag.chunks[:1])
+                try:
+                    self.d3.generate(f"Confirm mapping {src} -> {tgt}", self.rag.chunks[:1])
+                except Exception:
+                    pass   # the confirm text is discarded — the distance is local
             self.mapping_cache[key] = dist
         return Packet(
             action=Action.ACK, origin_id=pkt.origin_id, query_id=pkt.query_id,
@@ -369,7 +372,12 @@ class Node:
         chunks = self.rag.retrieve(qv)
         if not self.budget.charge():
             return self._rfo(pkt, Mode.NO_QUORUM, "generation budget exhausted")
-        out = self.d3.generate(pkt.payload["query_text"], chunks)
+        try:
+            out = self.d3.generate(pkt.payload["query_text"], chunks)
+        except Exception as e:
+            # explicit failure backtracked to the origin — never silent (v0.4);
+            # mirrors the Kotlin port (android/osp-lite Node.kt onResolve)
+            return self._rfo(pkt, Mode.NO_QUORUM, f"provider failure: {e}")
         head = out["answer"][:256]
         return Packet(
             action=Action.RESOLVE, origin_id=pkt.origin_id, query_id=pkt.query_id,
@@ -445,6 +453,8 @@ class Node:
         reply = self.hub.send(self.id, winner.sender, align)
         trace.append({"from": winner.sender, "action": "ALIGN"})
         if reply is None or reply.action == Action.RFO:
+            if reply is not None:      # the RFO's reason travels in the trace
+                trace.append({"from": winner.sender, "rfo": reply.payload["reason"]})
             return self._outcome(Mode.MISMATCH, trace, "alignment refused")
         dist1 = reply.payload["mapping_distance"]
         # C3 with C = 1: the first align is a lock-in, not a clarify round — the
@@ -465,6 +475,8 @@ class Node:
         reply = self.hub.send(self.id, winner.sender, resolve)
         trace.append({"from": winner.sender, "action": "RESOLVE"})
         if reply is None or reply.action == Action.RFO:
+            if reply is not None:      # the RFO's reason travels in the trace
+                trace.append({"from": winner.sender, "rfo": reply.payload["reason"]})
             return self._outcome(Mode.NO_QUORUM, trace, "winner could not generate")
 
         # 05 VERIFY — firewall L2 (origin-side, hash-addressable) + reputation
