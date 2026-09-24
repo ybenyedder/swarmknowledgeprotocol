@@ -50,7 +50,7 @@ WHO IS IT FOR
   conformance tests at the project repository.
 
 HONEST POSTURE
-Early release (v0.6.4), developer-oriented: peering is manual (URL +
+Early release (v0.6.5), developer-oriented: peering is manual (URL +
 token), packets are signed and TTL/gas-bounded, and a production
 Ed25519 + TLS signer is the committed next step.
 
@@ -117,6 +117,18 @@ paste the link in App content → Privacy policy).
   declared usage: peering with the user's own devices.
 - **Privacy policy URL**: required (host PRIVACY_POLICY.md anywhere
   public, e.g. GitHub Pages / a tree4five site page).
+
+### Release notes (v0.6.5 — versionCode 11)
+
+```
+Engine hardening — no protocol change, no new permission.
+• Fixed a negotiation crash when a peer's provider fails mid-handshake;
+  the exchange now ends in an explicit, inspectable outcome instead.
+• The reason a swarm declined to answer (provider failure, ungrounded,
+  out of gas) is now kept in the query trace you can read in the log.
+• Same verified-answers-only engine, shared byte-for-byte with the new
+  Linux and Python nodes — peers across all three platforms.
+```
 
 ### Release notes (v0.6.4 — versionCode 10)
 
