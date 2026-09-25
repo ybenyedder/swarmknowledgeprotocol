@@ -81,13 +81,21 @@ class LinuxNode(
     }
 
     /** (Re)build the origin transport from the peer table. */
-    fun setPeers(peers: Map<String, Peer>) {
+    fun setPeers(peers: Map<String, Peer>, readTimeoutMs: Int = DEFAULT_READ_TIMEOUT_MS) {
         remotes = peers
         // read timeout must cover the REMOTE generation (ALIGN/RESOLVE round
         // trips against an LLM on a CPU box legitimately take minutes)
-        val http = HttpHub(peers.mapValues { (_, p) -> HttpHub.Remote(p.url, p.token) })
+        val http = HttpHub(
+            peers.mapValues { (_, p) -> HttpHub.Remote(p.url, p.token) },
+            readTimeoutMs = readTimeoutMs,
+        )
         http.onError = { msg, err -> System.err.println("hub: $msg${err?.let { " — $it" } ?: ""}") }
         remoteHub = http
+    }
+
+    companion object {
+        /** 300 s, as ospbridge — gemma-class models on CPU answer in minutes. */
+        const val DEFAULT_READ_TIMEOUT_MS = 300_000
     }
 
     /** Add a chunk to the responder's store. */
