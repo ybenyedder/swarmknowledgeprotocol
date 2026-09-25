@@ -160,6 +160,10 @@ class OspService : Service() {
         return true
     }
 
+    /** The pinnable Ed25519 bundle when EdDSA sealing is on, else null. */
+    fun keyBundle(): Map<String, String>? = (signer as? HybridSigner)?.ed25519?.keyBundle()
+        ?: (signer as? Ed25519Signer)?.keyBundle()
+
     /** (Re)build the origin's transport from the persisted peer table. */
     fun rebuildOriginHub() {
         // read timeout must cover the REMOTE generation (ALIGN/RESOLVE round
@@ -314,7 +318,7 @@ class OspService : Service() {
                     "node" to this@OspService.nodeId,
                     // REQ-S-02: the pinnable bundle rides along in EdDSA mode —
                     // the bot's TOFU bootstrap reads exactly this record
-                    "key_bundle" to (signer as? Ed25519Signer)?.keyBundle(),
+                    "key_bundle" to this@OspService.keyBundle(),
                 ),
             ).toByteArray(Charsets.UTF_8)
     }

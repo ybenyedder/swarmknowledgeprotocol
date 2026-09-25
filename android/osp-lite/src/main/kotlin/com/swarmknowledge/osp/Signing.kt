@@ -96,13 +96,14 @@ class HybridSigner(
     private val keyLookup: ((String) -> Pair<String, String>?)? = null,
 ) : Signer {
     private val dev = DevSigner(hmacSecret)
-    private val ed = edSeed?.let { Ed25519Signer(it) }
-    override val label = ed?.label ?: "DEV-SIGNER"
+    /** Non-null when this signer seals Ed25519 — discovery reads its bundle. */
+    val ed25519: Ed25519Signer? = edSeed?.let { Ed25519Signer(it) }
+    override val label = ed25519?.label ?: "DEV-SIGNER"
 
-    fun sealEd25519(): Boolean = ed != null
+    fun sealEd25519(): Boolean = ed25519 != null
 
     override fun sign(obj: Map<String, Any?>): String =
-        ed?.sign(obj) ?: dev.sign(obj)
+        ed25519?.sign(obj) ?: dev.sign(obj)
 
     override fun verify(obj: Map<String, Any?>, sig: String): Boolean {
         if (!sig.startsWith("eyJ") || sig.count { it == '.' } != 2) return dev.verify(obj, sig)

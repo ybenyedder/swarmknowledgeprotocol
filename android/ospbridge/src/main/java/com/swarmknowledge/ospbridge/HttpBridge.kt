@@ -239,7 +239,7 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
         // the bot's TOFU bootstrap (PinStore) reads key_bundle + node_id from
         // this record and pins it on first sight (REQ-S-02)
         "node_id" to service.nodeId,
-        "key_bundle" to (service.signer as? Ed25519Signer)?.keyBundle(),
+        "key_bundle" to service.keyBundle(),
     )
 
     // -- plumbing ----------------------------------------------------------------
