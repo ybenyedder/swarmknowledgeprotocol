@@ -94,10 +94,12 @@ internal object Ed25519 {
 
     private fun secretExpand(seed: ByteArray): Pair<BigInteger, ByteArray> {
         val h = sha512(seed)
-        val aBytes = h.copyOfRange(0, 32)
-        var a = from32LE(aBytes)
-        a = a.clearBit(0).clearBit(1).clearBit(2)
-        a = a.setBit(254)
+        // RFC 8032 §5.1.2: a = h[0:32] as LE int, CLAMPED — the mask kills the
+        // low three bits AND every bit ≥ 254 (clearing bit 254 alone would let
+        // bit 255 through, ~50 % of seeds, silently deriving a wrong key)
+        val a = from32LE(h.copyOfRange(0, 32))
+            .and(BigInteger.TWO.pow(254).subtract(BigInteger.valueOf(8)))
+            .or(BigInteger.TWO.pow(254))
         return a to h.copyOfRange(32, 64)
     }
 

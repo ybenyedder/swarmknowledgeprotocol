@@ -21,6 +21,15 @@ class SigningTest {
         const val RFC_PUB_B64U = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
         const val RFC_KID = "k21fe31dfa154"
 
+        // Clamp regression: seed whose sha512 h[0:32] has bit 255 set — the
+        // RFC mask (a &= 2^254-8) kills it, a clear-bit-at-254-only clamp does
+        // not and silently derives a WRONG key. Vector agreed with
+        // osp/core.test.mjs and mcp/tests/test_signing.py.
+        val HIGHBIT_SEED: ByteArray =
+            hexToBytes("ed387623652b67e21596002bb6e55c8bc0c7d64de819e96e84bebc8c18e5c56d")
+        const val HIGHBIT_PUB = "6b5936ca403992a785aa772235f99c0eca0f8d1312399245db28819475990195"
+        const val HIGHBIT_KID = "k2cd07c474c46"
+
         // PROPOSE pktedfixed12 / jtiedfixed1616ab / qfixed12ed255,
         // ts 1758372366.25, query 'pompe hydraulique en panne'
         const val ED_SIG =
@@ -54,6 +63,14 @@ class SigningTest {
     fun sharedGoldenVectorSealsByteIdentically() {
         val pkt = fixedPacket().seal(Ed25519Signer(RFC_SEED))
         assertEquals(ED_SIG, pkt.sig, "same seed + canonical bytes must give the same JWS")
+    }
+
+    @Test
+    fun clampingMasksBit255NotJustBit254() {
+        // once shipped as clearBit(0..2)+setBit(254): correct for the RFC
+        // seeds (their bit 255 happens to be 0), wrong for ~half the seeds
+        assertEquals(HIGHBIT_PUB, hex(Ed25519.publicKey(HIGHBIT_SEED)))
+        assertEquals(HIGHBIT_KID, Ed25519Signer(HIGHBIT_SEED).kid)
     }
 
     @Test

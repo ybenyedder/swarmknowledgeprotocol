@@ -85,6 +85,18 @@ class TestEd25519Signer(unittest.TestCase):
         self.assertEqual(s.key_bundle(),
                          {"alg": "EdDSA", "kid": RFC_KID, "signing": RFC_PUB_B64U})
 
+    def test_clamping_masks_bit255_not_only_bit254(self):
+        """Clamp regression, vector agreed with osp/core.test.mjs and
+        SigningTest.kt: seed whose sha512 h[0:32] has bit 255 set — the RFC
+        mask (a &= 2^254-8) kills it, a clear-bit-254-only clamp does not."""
+        seed = bytes.fromhex(
+            "ed387623652b67e21596002bb6e55c8bc0c7d64de819e96e84bebc8c18e5c56d")
+        s = Ed25519Signer(seed)
+        self.assertEqual(
+            s.public.hex(),
+            "6b5936ca403992a785aa772235f99c0eca0f8d1312399245db28819475990195")
+        self.assertEqual(s.kid, "k2cd07c474c46")
+
     def test_shared_golden_vector(self):
         """Same signature as osp/core.test.mjs and SigningTest.kt."""
         pkt = _fixed_packet()
