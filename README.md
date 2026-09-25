@@ -233,6 +233,17 @@ transport. No implementation shall ship the dev secret beyond a laboratory
 LAN; the Android bridge declares cleartext HTTP for exactly this reason and
 labels itself dev-grade.
 
+*Status:* all three reference implementations now ship `Ed25519Signer` —
+JWS compact EdDSA over the canonical bytes, `kid` = `sha256(public key)[:12]`,
+byte-identical across Python (`mcp/osp_core.py`), JavaScript (`osp/core.mjs`)
+and Kotlin (`android/osp-lite` Signing.kt, pinned by a shared golden vector in
+each suite). Each ships a `HybridSigner` that seals Ed25519 when a seed is
+provisioned, falls back to the labelled dev HMAC otherwise, and verifies both
+schemes during the migration window. TOFU pinning (REQ-S-02) is enforced
+bot-side by `osp/peer.mjs` `PinStore`: first key bundle per node id is pinned,
+a changed bundle is rejected until an explicit re-pin, and bootstrap only
+trusts a sender's `/osp/endpoint.json` record that proves its own `node_id`.
+
 ### 5.3 Negotiation procedures
 
 **5.3.1 PROPOSE.** The origin selects up to k candidates (from its discovery
@@ -335,9 +346,9 @@ a convergence mode of 3.1.8.
 
 | Suite | Scope | Status |
 |---|---|---|
-| `mcp/tests/` (Python, offline, deterministic — REQ-NF-03) | core convergence modes, firewall, budgets, discovery TOFU/replay, MCP surface, `osp_node` HTTP bridge | 44/44 |
-| `osp/core.test.mjs` (JavaScript) | wire parity with Python (embed, similarity, `pyDouble`, canonical JSON, sealed packets), negotiation | 13/13 |
-| `android/osp-lite` JVM tests (Kotlin) | protocol core, discovery Q8, mini-JSON, cross-language interop vectors | 38/38 |
+| `mcp/tests/` (Python, offline, deterministic — REQ-NF-03) | core convergence modes, firewall, budgets, discovery TOFU/replay, MCP surface, `osp_node` HTTP bridge, RFC 8032 vectors + shared signing golden vector | 55/55 |
+| `osp/core.test.mjs` + `osp/peer.test.mjs` (JavaScript) | wire parity with Python (embed, similarity, `pyDouble`, canonical JSON, sealed packets), negotiation, Ed25519/Hybrid signer + TOFU pin store | 45/45 |
+| `android/osp-lite` JVM tests (Kotlin) | protocol core, discovery Q8, mini-JSON, cross-language interop vectors, Ed25519 (RFC 8032) + shared signing golden vector | 43/43 |
 | `linux/ospnode` JVM tests (Kotlin) | Linux HTTP surface: auth double-header, teach → RESOLVED, forged-packet silence, ospbridge peer format | 7/7 |
 | Property/fuzz (L5, planned) | differential serialisation, adversarial providers | `[4]` test plan |
 

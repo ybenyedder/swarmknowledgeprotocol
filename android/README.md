@@ -47,6 +47,30 @@ curl -H "x-api-token: $T" -H "Authorization: Bearer $T" \
 `Authorization`) and a 300 s read timeout — remote generation (ollama on a
 CPU box) legitimately takes tens of seconds.
 
+### Ed25519 provisioning (REQ-S-01/02)
+
+The bridge seals with the labelled dev HMAC until an Ed25519 seed is
+provisioned — the bot refuses nothing during the migration window (its
+`HybridSigner` verifies both schemes), but the goal is every node on Ed25519:
+
+```bash
+# on the PC: generate a seed for the tablet (the seed stays secret)
+node scripts/osp-keygen.mjs          # (whatsapp-bot repo) — or any 32-byte hex
+
+# on the tablet: provision it, then restart the service
+adb shell am start-foreground-service -n com.swarmknowledge.ospbridge/.OspService
+adb shell "run-as com.swarmknowledge.ospbridge cat /dev/null"  # (seed set via app prefs / adb)
+```
+
+The seed lives in the `ospbridge` shared prefs under `osp_ed25519_seed`
+(64 hex chars) — write it with the app running once (`adb shell run-as
+com.swarmknowledge.ospbridge` on a debuggable build), then restart the
+service so `onStartCommand` picks it up. Once set, the service seals JWS
+compact EdDSA and serves the pinnable bundle (`alg`/`kid`/`signing`) on
+`/osp/endpoint.json`; the bot pins it on first sight (TOFU) or accepts it via
+`POST /osp/pins/repin`. A rotated key must be re-pinned explicitly — the pin
+store rejects silent drift.
+
 ### Peer with the Linux node (`../linux/ospnode`)
 
 The tablet and a headless Linux node run the **same** `osp-lite` core, so
