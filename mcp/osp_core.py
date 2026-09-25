@@ -15,12 +15,18 @@ No third-party dependencies (REQ-NF-01). No network calls (REQ-NF-03).
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
 import threading
 import time
 import uuid
+
+try:                                    # package import (tests/, mcp.*)
+    from . import ed25519
+except ImportError:                     # flat import (osp_cli.py, mcp_server.py)
+    import ed25519
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -108,6 +114,66 @@ class DevSigner:
 
     def verify(self, obj: dict, sig: str) -> bool:
         return hmac.compare_digest(self.sign(obj), sig)
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode().rstrip("=")
+
+
+def _b64url_decode(text: str) -> bytes:
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+
+
+class Ed25519Signer:
+    """REQ-S-01 production signer: Ed25519 (RFC 8032) via JWS compact EdDSA.
+
+    sig = b64url(header) + "." + b64url(canonical bytes) + "." + b64url(64-byte
+    signature), header {"alg":"EdDSA","kid",…,"typ":"OSP/v0.6"} — byte-identical
+    wire format with the bot (osp/core.mjs) and the tablet (osp-lite Signing.kt).
+    The canonical payload rides inside the JWS, so verify() byte-compares it
+    against its own canonical form before trusting the signature: a non-
+    canonical sender fails closed. kid is derived from the public key so peers
+    can pin and select it (REQ-S-02)."""
+
+    label = "ED25519-JWS"
+
+    def __init__(self, seed: bytes):
+        if len(seed) != 32:
+            raise ValueError("Ed25519 seed must be 32 bytes")
+        self.seed = seed
+        self.public = ed25519.publickey(seed)
+        self.kid = "k" + hashlib.sha256(self.public).hexdigest()[:12]
+        header = json.dumps(
+            {"alg": "EdDSA", "kid": self.kid, "typ": "OSP/v0.6"},
+            sort_keys=True, separators=(",", ":"),
+        ).encode()
+        self.header_b64 = _b64url(header)
+
+    def sign(self, obj: dict) -> str:
+        payload = _b64url(json.dumps(obj, sort_keys=True, separators=(",", ":")).encode())
+        sig = ed25519.sign(self.seed, f"{self.header_b64}.{payload}".encode())
+        return f"{self.header_b64}.{payload}.{_b64url(sig)}"
+
+    def verify(self, obj: dict, sig: str) -> bool:
+        parts = sig.split(".")
+        if len(parts) != 3 or not parts[0].startswith("eyJ"):
+            return False
+        header_b64, payload_b64, sig_b64 = parts
+        try:
+            header = json.loads(_b64url_decode(header_b64))
+        except (ValueError, json.JSONDecodeError):
+            return False
+        if header.get("alg") != "EdDSA":
+            return False
+        canonical = json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
+        if not _b64url(canonical) == payload_b64:          # non-canonical sender
+            return False
+        return ed25519.verify(self.public, f"{header_b64}.{payload_b64}".encode(),
+                              _b64url_decode(sig_b64))
+
+    def key_bundle(self) -> dict:
+        """The discovery bundle peers PIN (REQ-S-02, first sight)."""
+        return {"alg": "EdDSA", "kid": self.kid, "signing": _b64url(self.public)}
 
 
 # ---------------------------------------------------------------------------
