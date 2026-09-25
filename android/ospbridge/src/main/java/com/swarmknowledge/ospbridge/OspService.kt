@@ -9,6 +9,9 @@ import android.content.SharedPreferences
 import android.os.IBinder
 import android.os.Build
 import com.swarmknowledge.osp.DevSigner
+import com.swarmknowledge.osp.Ed25519Signer
+import com.swarmknowledge.osp.HybridSigner
+import com.swarmknowledge.osp.Signer
 import com.swarmknowledge.osp.Directory
 import com.swarmknowledge.osp.HttpHub
 import com.swarmknowledge.osp.InMemoryHub
@@ -46,7 +49,7 @@ class OspService : Service() {
         private set
     lateinit var directory: Directory
         private set
-    lateinit var signer: DevSigner
+    lateinit var signer: Signer
         private set
 
     var origin: Node? = null
@@ -108,7 +111,15 @@ class OspService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startInForeground()
         startedAt = System.currentTimeMillis()
-        signer = DevSigner()
+        // REQ-S-01: seal Ed25519 when a 32-byte hex seed is configured in prefs
+        // ("osp_ed25519_seed"); otherwise stay on the labelled dev HMAC until
+        // provisioning. Both schemes verify either way (migration window).
+        signer = prefs.getString("osp_ed25519_seed", null)
+            ?.takeIf { it.length == 64 && it.all { c -> c.isDigit() || c in 'a'..'f' } }
+            ?.let { seedHex ->
+                HybridSigner(edSeed = seedHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+            }
+            ?: DevSigner()
         rag = RagStore(prefs.getStringSet("taught", emptySet())!!.sorted())
         hub = InMemoryHub()
         directory = Directory()
@@ -301,7 +312,9 @@ class OspService : Service() {
                 mapOf<String, Any?>(
                     "signing" to signer.label,
                     "node" to this@OspService.nodeId,
-                    "prekey" to "dev-none",
+                    // REQ-S-02: the pinnable bundle rides along in EdDSA mode —
+                    // the bot's TOFU bootstrap reads exactly this record
+                    "key_bundle" to (signer as? Ed25519Signer)?.keyBundle(),
                 ),
             ).toByteArray(Charsets.UTF_8)
     }

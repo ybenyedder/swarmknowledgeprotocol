@@ -1,5 +1,6 @@
 package com.swarmknowledge.ospbridge
 
+import com.swarmknowledge.osp.Ed25519Signer
 import com.swarmknowledge.osp.MiniJson
 import com.swarmknowledge.osp.Packet
 import java.io.InputStream
@@ -235,6 +236,10 @@ class HttpBridge(private val service: OspService, val port: Int = OspService.POR
         "api_key_env" to "OSP_BRIDGE_TOKEN",
         "osp_packet_url" to "http://${lanAddress()}:$port/osp/packet",
         "osp_node_id" to service.nodeId,
+        // the bot's TOFU bootstrap (PinStore) reads key_bundle + node_id from
+        // this record and pins it on first sight (REQ-S-02)
+        "node_id" to service.nodeId,
+        "key_bundle" to (service.signer as? Ed25519Signer)?.keyBundle(),
     )
 
     // -- plumbing ----------------------------------------------------------------
